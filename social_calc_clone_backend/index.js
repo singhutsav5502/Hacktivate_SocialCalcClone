@@ -23,6 +23,9 @@ const io = new Server(server, {
   }
 });
 
+// Set global.io
+global.io = io;
+
 // Set up middleware
 app.use(express.json());
 app.set('io', io); // Store io instance in the app for access in routes
