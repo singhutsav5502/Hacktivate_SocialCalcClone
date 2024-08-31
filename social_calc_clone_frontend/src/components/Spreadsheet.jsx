@@ -112,12 +112,8 @@ const Spreadsheet = ({ sessionId, userId }) => {
     };
   }, [sessionId, username, email, userId]);
 
-<<<<<<< HEAD
   const handleCellChange = async (event) => {
     const senderId = userId;
-=======
-  const updateCellVal= (event)=>{
->>>>>>> eb2c94bc8a13aec19b984e8665c9592267c67622
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
 
