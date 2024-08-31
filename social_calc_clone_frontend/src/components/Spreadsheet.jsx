@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { setUser } from '../store/userSlice';
-import io from 'socket.io-client';
-import './Spreadsheet.css'; 
-import Toolbar from './Toolbar';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../store/userSlice";
+import io from "socket.io-client";
+import "./Spreadsheet.css";
+import Toolbar from "./Toolbar";
 const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
@@ -17,55 +17,65 @@ const Spreadsheet = ({ sessionId, userId }) => {
     if (!sessionId || !username || !email) return; // Exit early if sessionId, username, or email are not available
 
     // Initialize the socket connection
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
-    newSocket.emit('createUser', { username, email });
+    newSocket.emit("createUser", { username, email });
 
     // Handle the response
-    newSocket.on('userCreated', (data) => {
+    newSocket.on("userCreated", (data) => {
       dispatch(setUser(data));
       alert(`User created: ${data.username}`);
     });
 
     // Handle errors
-    newSocket.on('error', (message) => {
+    newSocket.on("error", (message) => {
       alert(message);
     });
 
     // Join the session
-    newSocket.emit('joinSession', { sessionId, userId });
+    newSocket.emit("joinSession", { sessionId, userId });
 
-    newSocket.on('sessionData', (data) => {
-      console.log('Received sessionData:', data);
-      
+    newSocket.on("sessionData", (data) => {
+      console.log("Received sessionData:", data);
+      console.log(typeof data.sessionData);
       if (Array.isArray(data.sessionData)) {
-        const formattedSessionData = data.sessionData.reduce((acc, [key, value]) => {
-          acc[key] = value;
-          return acc;
-        }, {});
-        
+        // If sessionData is an array, format it into an object
+        const formattedSessionData = data.sessionData.reduce(
+          (acc, [key, value]) => {
+            acc[key] = value;
+            return acc;
+          },
+          {}
+        );
+
         // Update local state with the received session data
         setCells(formattedSessionData);
+      } else if (
+        typeof data.sessionData === "object" &&
+        data.sessionData !== null
+      ) {
+        // If sessionData is already an object with string keys and string values
+        setCells(data.sessionData);
       } else {
-        console.error('Received sessionData is not in the expected format');
+        console.error("Received sessionData is not in the expected format");
       }
     });
     // Listen for session data updates
-    newSocket.on('sessionDataUpdated', ({ cellId, newValue }) => {
-      setCells(prevCells => ({
+    newSocket.on("sessionDataUpdated", ({ cellId, newValue }) => {
+      setCells((prevCells) => ({
         ...prevCells,
-        [cellId]: newValue
+        [cellId]: newValue,
       }));
     });
 
     // Listen for cell focus events
-    newSocket.on('cellFocused', ({ cellId, username }) => {
+    newSocket.on("cellFocused", ({ cellId, username }) => {
       setFocusedCell(cellId);
       setFocusedUser(username);
     });
 
     // Listen for cell unfocus events
-    newSocket.on('cellUnfocused', ({ cellId }) => {
+    newSocket.on("cellUnfocused", ({ cellId }) => {
       if (focusedCell === cellId) {
         setFocusedCell(null);
         setFocusedUser(null);
@@ -74,79 +84,78 @@ const Spreadsheet = ({ sessionId, userId }) => {
 
     // Clean up when the component unmounts
     return () => {
-      newSocket.off('sessionDataUpdated');
-      newSocket.off('cellFocused');
-      newSocket.off('cellUnfocused');
+      newSocket.off("sessionDataUpdated");
+      newSocket.off("cellFocused");
+      newSocket.off("cellUnfocused");
       newSocket.disconnect();
     };
   }, [sessionId, username, email, userId]);
 
-  const handleCellChange =async (event) => {
+  const handleCellChange = async (event) => {
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
 
     // Update local state
-    setCells(prevCells => ({
+    setCells((prevCells) => ({
       ...prevCells,
-      [cellId]: newValue
+      [cellId]: newValue,
     }));
 
     try {
-      console.log(cells)
+      console.log(cells);
       await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sessionData:Object.entries(cells) })
+        body: JSON.stringify({ sessionData: Object.entries(cells) }),
       });
-  
+
       // Optionally, handle any local updates or dispatches if needed
     } catch (error) {
-      console.error('Error updating session data:', error);
+      console.error("Error updating session data:", error);
     }
   };
 
   const handleFocus = (event) => {
     const cellId = event.target.id;
-    socket.emit('focusCell', { sessionId, cellId, username });
+    socket.emit("focusCell", { sessionId, cellId, username });
   };
 
   const handleBlur = (event) => {
     const cellId = event.target.id;
-    socket.emit('unfocusCell', { sessionId, cellId, username });
+    socket.emit("unfocusCell", { sessionId, cellId, username });
   };
 
   const addRow = () => {
-    socket.emit('addRow', { sessionId });
+    socket.emit("addRow", { sessionId });
   };
 
   const addColumn = () => {
-    socket.emit('addColumn', { sessionId });
+    socket.emit("addColumn", { sessionId });
   };
 
   return (
     <div>
-      <Toolbar
-        addRow={addRow}
-        addColumn={addColumn}
-      />
+      <Toolbar addRow={addRow} addColumn={addColumn} />
       <table>
         <tbody>
           {Array.from({ length: 10 }).map((_, rowIndex) => (
             <tr key={rowIndex}>
               {Array.from({ length: 10 }).map((_, colIndex) => {
-                const cellId = `${String.fromCharCode(65 + colIndex)}${rowIndex + 1}`;
+                const cellId = `${String.fromCharCode(65 + colIndex)}${
+                  rowIndex + 1
+                }`;
                 return (
                   <td key={cellId}>
                     <input
                       id={cellId}
                       type="text"
-                      value={cells[cellId] || ''}
+                      value={cells[cellId] || ""}
                       onChange={handleCellChange}
                       onFocus={handleFocus}
                       onBlur={handleBlur}
-                      className={focusedCell === cellId ? 'highlight' : ''}
+                      className={focusedCell === cellId ? "highlight" : ""}
                     />
                     {focusedCell === cellId && focusedUser && (
                       <label className="focused-user">{focusedUser}</label>
