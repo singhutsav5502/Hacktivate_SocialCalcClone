@@ -115,25 +115,29 @@ const Spreadsheet = ({ sessionId, userId }) => {
   const handleCellChange = async (event) => {
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
-
+  
     // Update local state
     setCells((prevCells) => ({
       ...prevCells,
       [cellId]: newValue,
     }));
-
+  
     // Only send the update to the server if it's a local change
     if (!isRemoteUpdate) {
       try {
-        console.log(cells);
+        const updatedCells = {
+          ...cells,
+          [cellId]: newValue,
+        };
+        console.log(updatedCells);
         await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ sessionData: Object.entries(cells), senderId: userId }),
+          body: JSON.stringify({ sessionData: Object.entries(updatedCells), senderId: userId }),
         });
-
+  
         // Optionally, handle any local updates or dispatches if needed
       } catch (error) {
         console.error("Error updating session data:", error);
