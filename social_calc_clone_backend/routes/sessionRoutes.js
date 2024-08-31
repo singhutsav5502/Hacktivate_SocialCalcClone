@@ -1,24 +1,38 @@
 const express = require('express');
 const Session = require('../models/Session');
+const User = require('../models/user')
 const DiffMatchPatch = require('diff-match-patch');
 const dmp = new DiffMatchPatch();
 
 const router = express.Router();
 
 router.post('/create', async (req, res) => {
-    try {
-      const sessionId = `sess-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-      const session = new Session({ sessionId, sessionData: new Map() });
-      await session.save();
-  
-      // Assume a user creation here for demo purposes
-      const user = new User({ username: `user-${Date.now()}`, email: `user${Date.now()}@example.com` });
-      await user.save();
-  
-      session.users.push(user._id);
-      await session.save();
-  
-      res.status(201).json({ sessionId });
+  try {
+    const { username, email } = req.body;
+
+    // Check if a user with the given username or email already exists
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists.' });
+    }
+
+    // Create a new session
+    const sessionId = `sess-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    const session = new Session({ sessionId, sessionData: new Map() });
+    await session.save();
+
+    // Create a new user
+    const newUser = new User({ username, email });
+    await newUser.save();
+
+    // Add the new user to the session
+    session.users.push(newUser._id);
+    await session.save();
+
+    res.status(201).json({ sessionId });
     } catch (error) {
       console.error('Error creating session:', error);
       res.status(500).json({ message: 'Internal server error' });
