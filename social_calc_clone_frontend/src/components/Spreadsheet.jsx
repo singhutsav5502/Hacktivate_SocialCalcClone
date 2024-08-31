@@ -19,16 +19,16 @@ const Spreadsheet = ({ sessionId, userId }) => {
     // Initialize the socket connection
     const newSocket = io('http://localhost:5000');
     setSocket(newSocket);
-    socket.emit('createUser', { username, email });
+    newSocket.emit('createUser', { username, email });
 
     // Handle the response
-    socket.on('userCreated', (data) => {
+    newSocket.on('userCreated', (data) => {
       setUser(data);
       alert(`User created: ${data.username}`);
     });
 
     // Handle errors
-    socket.on('error', (message) => {
+    newSocket.on('error', (message) => {
       alert(message);
     });
     // Join the session
