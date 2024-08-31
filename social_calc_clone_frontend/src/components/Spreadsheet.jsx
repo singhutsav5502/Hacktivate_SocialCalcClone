@@ -1,24 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCellValue, updateSessionData } from '../store/cellSlice';
 import { setUser } from '../store/userSlice';
-import { evaluateFormula } from '../utils/formulaEvaluator';
 import io from 'socket.io-client';
 import './Spreadsheet.css'; 
-import Toolbar from './Toolbar'; // Import the Toolbar component
-
+import Toolbar from './Toolbar';
 const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
   const [focusedUser, setFocusedUser] = useState(null);
+  const [cells, setCells] = useState({}); // Local state for cells
   const dispatch = useDispatch();
-  const cells = useSelector((state) => state.cells.cells);
   const username = useSelector((state) => state.user.username);
   const email = useSelector((state) => state.user.email);
-  const computedValues = useSelector((state) => state.cells.computedValues);
 
   useEffect(() => {
-    if (!sessionId) return; // Exit early if sessionId is not available
+    if (!sessionId || !username || !email) return; // Exit early if sessionId, username, or email are not available
 
     // Initialize the socket connection
     const newSocket = io('http://localhost:5000');
@@ -39,9 +35,27 @@ const Spreadsheet = ({ sessionId, userId }) => {
     // Join the session
     newSocket.emit('joinSession', { sessionId, userId });
 
-    // Listen for updates
-    newSocket.on('sessionDataUpdated', ({ cellId, newValue, computedValue }) => {
-      dispatch(setCellValue({ cellId, value: newValue, computedValue }));
+    newSocket.on('sessionData', (data) => {
+      console.log('Received sessionData:', data);
+      
+      if (Array.isArray(data.sessionData)) {
+        const formattedSessionData = data.sessionData.reduce((acc, [key, value]) => {
+          acc[key] = value;
+          return acc;
+        }, {});
+        
+        // Update local state with the received session data
+        setCells(formattedSessionData);
+      } else {
+        console.error('Received sessionData is not in the expected format');
+      }
+    });
+    // Listen for session data updates
+    newSocket.on('sessionDataUpdated', ({ cellId, newValue }) => {
+      setCells(prevCells => ({
+        ...prevCells,
+        [cellId]: newValue
+      }));
     });
 
     // Listen for cell focus events
@@ -65,22 +79,32 @@ const Spreadsheet = ({ sessionId, userId }) => {
       newSocket.off('cellUnfocused');
       newSocket.disconnect();
     };
-  }, [sessionId, dispatch]);
+  }, [sessionId, username, email, userId]);
 
-  const handleCellChange = (event) => {
+  const handleCellChange =async (event) => {
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
-    const oldValue = cells[cellId] || ''; // Previous value
 
-    // Check if the new value is a formula (starts with "=")
-    const isFormula = newValue.startsWith('=');
-    const computedValue = isFormula ? evaluateFormula(newValue.slice(1), cells) : newValue;
+    // Update local state
+    setCells(prevCells => ({
+      ...prevCells,
+      [cellId]: newValue
+    }));
 
-    // Dispatch local update
-    dispatch(setCellValue({ cellId, value: newValue, computedValue }));
-
-    // Dispatch async action to update session data on the server
-    dispatch(updateSessionData({ sessionId, cellId, newValue, oldValue }));
+    try {
+      console.log(cells)
+      await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sessionData:Object.entries(cells) })
+      });
+  
+      // Optionally, handle any local updates or dispatches if needed
+    } catch (error) {
+      console.error('Error updating session data:', error);
+    }
   };
 
   const handleFocus = (event) => {
@@ -104,8 +128,8 @@ const Spreadsheet = ({ sessionId, userId }) => {
   return (
     <div>
       <Toolbar
-        onSave={addRow}
-        onLoad={addColumn}
+        addRow={addRow}
+        addColumn={addColumn}
       />
       <table>
         <tbody>

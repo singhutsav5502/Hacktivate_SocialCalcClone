@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors'); 
 const User = require('./models/user');
+const Session = require('./models/session')
 require('dotenv').config();
 
 const app = express();
@@ -38,18 +39,34 @@ app.use('/api/session', sessionRoutes);
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  // Handle the user joining a session
-  socket.on('joinSession', async ({ sessionId, userId }) => {
-    console.log(`User ${userId} joined session: ${sessionId}`);
-    socket.join(sessionId);
-  });
+    // Handle the user joining a session
+    socket.on('joinSession', async ({ sessionId, userId }) => {
+      console.log(`User ${userId} joined session: ${sessionId}`);
+      socket.join(sessionId);
+  
+      try {
+        const session = await Session.findOne({ sessionId });
+        if (session) {
+          // Send the entire session data to the newly joined user
+          socket.emit('sessionData', {
+            sessionId: session.sessionId,
+            sessionData: Array.from(session.sessionData.entries()).reduce((acc, [key, value]) => {
+              acc[key] = value;
+              return acc;
+            }, {})
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching session data:', error);
+      }
+    });
 
-  // Handle session data updates
-  socket.on('sessionDataUpdated', ({ sessionId, cellId, newValue }) => {
-    console.log(`Data updated for cell ${cellId}: ${newValue}`);
-    // Notify all users in the session
-    socket.broadcast.to(sessionId).emit('sessionDataUpdated', { cellId, newValue });
-  });
+  // // Handle session data updates
+  // socket.on('sessionDataUpdated', ({ sessionId, cellId, newValue }) => {
+  //   console.log(`Data updated for cell ${cellId}: ${newValue}`);
+  //   // Notify all users in the session
+  //   socket.broadcast.to(sessionId).emit('sessionDataUpdated', { cellId, newValue });
+  // });
 
   // Handle cell focus
   socket.on('focusCell', ({ sessionId, cellId, username }) => {

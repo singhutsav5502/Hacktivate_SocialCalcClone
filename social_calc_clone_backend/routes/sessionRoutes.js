@@ -1,5 +1,5 @@
 const express = require('express');
-const Session = require('../models/Session');
+const Session = require('../models/session');
 const User = require('../models/user');
 const DiffMatchPatch = require('diff-match-patch');
 const AsyncLock = require('async-lock');
@@ -11,6 +11,11 @@ const router = express.Router();
 router.post('/create', async (req, res) => {
   try {
     const { username, email } = req.body;
+
+    // Check if both username and email are provided
+    if (!username || !email) {
+      return res.status(400).json({ message: 'Username and email are required' });
+    }
 
     // Check if a user with the given username or email already exists
     let existingUser = await User.findOne({
@@ -40,6 +45,7 @@ router.post('/create', async (req, res) => {
   }
 });
 
+
 router.post('/join/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
   const { username, email } = req.body;
@@ -66,42 +72,52 @@ router.post('/join/:sessionId', async (req, res) => {
       await session.save();
     }
 
-    res.status(200).json({ sessionId: session.sessionId, sessionData: session.sessionData, userId });
+    // Send the entire session data to the client
+    res.status(200).json({
+      sessionId: session.sessionId,
+      sessionData: Array.from(session.sessionData.entries()).reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {}),
+      userId
+    });
   } catch (error) {
     console.error('Error joining session:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-
 // Endpoint to update session data
 router.post('/update/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
-  const { cellId, patch } = req.body;
+  const { sessionData } = req.body; // Entire sessionData should be sent from the client
 
   try {
+    if (!Array.isArray(sessionData)) {
+      return res.status(400).json({ message: 'Invalid sessionData format' });
+    }
+
+    // Convert array to Map
+    const formattedSessionData = new Map(sessionData);
+
     await lock.acquire(sessionId, async () => {
       const session = await Session.findOne({ sessionId });
       if (!session) {
         return res.status(404).json({ message: 'Session not found' });
       }
 
-      // Apply delta patch to get the new value
-      const oldValue = session.sessionData.get(cellId)?.value || '';
-      const [newValue] = dmp.patch_apply(patch, oldValue);
-      const isFormula = newValue.startsWith('=');
-      const computedValue = isFormula ? evaluateFormula(newValue.slice(1), session.sessionData) : newValue;
-
-      // Update the session data
-      session.sessionData.set(cellId, { value: newValue, computedValue });
+      // Update session data
+      session.sessionData = formattedSessionData;
       await session.save();
 
-      // Notify all users in the session about the update
-      global.io.to(sessionId).emit('sessionDataUpdated', { cellId, newValue, computedValue });
+      // Broadcast updated session data to all clients in the session
+      global.io.to(sessionId).emit('sessionDataUpdated', {
+        sessionData: Array.from(formattedSessionData.entries())
+      });
 
-      res.status(200).json({ message: 'Cell updated successfully' });
+      res.status(200).json({ message: 'Session data updated successfully' });
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error updating session data:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
