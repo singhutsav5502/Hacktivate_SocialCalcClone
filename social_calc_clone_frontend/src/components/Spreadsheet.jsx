@@ -4,11 +4,13 @@ import { setUser } from "../store/userSlice";
 import io from "socket.io-client";
 import "./Spreadsheet.css";
 import Toolbar from "./Toolbar";
+
 const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
   const [focusedUser, setFocusedUser] = useState(null);
   const [cells, setCells] = useState({}); // Local state for cells
+  const [isRemoteUpdate, setIsRemoteUpdate] = useState(false); // Flag for remote updates
   const dispatch = useDispatch();
   const username = useSelector((state) => state.user.username);
   const email = useSelector((state) => state.user.email);
@@ -60,25 +62,30 @@ const Spreadsheet = ({ sessionId, userId }) => {
         console.error("Received sessionData is not in the expected format");
       }
     });
+
     // Listen for session data updates
     // Handle the received session data
-    newSocket.on("sessionDataUpdated", ({ sessionData }) => {
-      if (Array.isArray(sessionData)) {
-        // Convert the array of entries back into an object
-        const updatedSessionData = sessionData.reduce((acc, [key, value]) => {
-          acc[key] = value;
-          return acc;
-        }, {});
+    newSocket.on("sessionDataUpdated", ({ sessionData, senderId }) => {
+      if (senderId !== userId) { // Ignore updates from the current user
+        if (Array.isArray(sessionData)) {
+          // Convert the array of entries back into an object
+          const updatedSessionData = sessionData.reduce((acc, [key, value]) => {
+            acc[key] = value;
+            return acc;
+          }, {});
 
-        // Update the cells state with the new data
-        setCells((prevCells) => ({
-          ...prevCells,
-          ...updatedSessionData,
-        }));
-      } else {
-        console.error(
-          "Received sessionData is not in the expected array format"
-        );
+          // Set the flag to indicate a remote update
+          setIsRemoteUpdate(true);
+          // Update the cells state with the new data
+          setCells((prevCells) => ({
+            ...prevCells,
+            ...updatedSessionData,
+          }));
+        } else {
+          console.error(
+            "Received sessionData is not in the expected array format"
+          );
+        }
       }
     });
 
@@ -106,6 +113,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
   }, [sessionId, username, email, userId]);
 
   const handleCellChange = async (event) => {
+    const senderId = userId;
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
 
@@ -115,19 +123,25 @@ const Spreadsheet = ({ sessionId, userId }) => {
       [cellId]: newValue,
     }));
 
-    try {
-      console.log(cells);
-      await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionData: Object.entries(cells) }),
-      });
+    // Only send the update to the server if it's a local change
+    if (!isRemoteUpdate) {
+      try {
+        console.log(cells);
+        await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sessionData: Object.entries(cells), senderId: senderId }),
+        });
 
-      // Optionally, handle any local updates or dispatches if needed
-    } catch (error) {
-      console.error("Error updating session data:", error);
+        // Optionally, handle any local updates or dispatches if needed
+      } catch (error) {
+        console.error("Error updating session data:", error);
+      }
+    } else {
+      // Reset the flag after handling the remote update
+      setIsRemoteUpdate(false);
     }
   };
 

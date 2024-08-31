@@ -88,6 +88,7 @@ router.post('/join/:sessionId', async (req, res) => {
 });
 // Endpoint to update session data
 router.post('/update/:sessionId', async (req, res) => {
+  const { senderId } = req.body;
   const { sessionId } = req.params;
   const { sessionData } = req.body; // Entire sessionData should be sent from the client
 
@@ -111,7 +112,8 @@ router.post('/update/:sessionId', async (req, res) => {
 
       // Broadcast updated session data to all clients in the session
       global.io.to(sessionId).emit('sessionDataUpdated', {
-        sessionData: Array.from(formattedSessionData.entries())
+        sessionData: Array.from(formattedSessionData.entries()),
+        senderId 
       });
 
       res.status(200).json({ message: 'Session data updated successfully' });
