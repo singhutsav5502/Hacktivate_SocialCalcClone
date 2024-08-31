@@ -9,7 +9,7 @@ const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      {!sessionId ? <SessionMenu /> : <Spreadsheet />}
+      {!sessionId ? <SessionMenu /> : <Spreadsheet sessionId={sessionId}/>}
     </ThemeProvider>
   );
 };

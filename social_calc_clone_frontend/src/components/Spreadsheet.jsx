@@ -1,29 +1,32 @@
-// components/Spreadsheet.jsx
-import React,  { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCellValue, updateSessionData } from '../store/cellSlice';
 import { evaluateFormula } from '../utils/formulaEvaluator';
 import io from 'socket.io-client';
-const socket = io('http://localhost:5000'); 
 
 const Spreadsheet = ({ sessionId }) => {
+  const [socket, setSocket] = useState(null);
   const dispatch = useDispatch();
   const cells = useSelector((state) => state.cells.cells);
   const computedValues = useSelector((state) => state.cells.computedValues);
 
   useEffect(() => {
+    // Initialize the socket connection when the component mounts
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+
     // Join the session
-    socket.emit('joinSession', sessionId);
+    newSocket.emit('joinSession', sessionId);
 
     // Listen for updates
-    socket.on('sessionDataUpdated', ({ cellId, newValue, computedValue }) => {
+    newSocket.on('sessionDataUpdated', ({ cellId, newValue, computedValue }) => {
       dispatch(setCellValue({ cellId, value: newValue, computedValue }));
     });
 
     // Clean up when the component unmounts
     return () => {
-      socket.off('sessionDataUpdated');
-      socket.disconnect();
+      newSocket.off('sessionDataUpdated');
+      newSocket.disconnect();
     };
   }, [sessionId, dispatch]);
 
