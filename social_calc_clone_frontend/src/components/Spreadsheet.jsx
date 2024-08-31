@@ -112,7 +112,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
                       className={focusedCell === cellId ? 'highlight' : ''}
                     />
                     {focusedCell === cellId && focusedUser && (
-                      <div className="focused-user">{focusedUser}</div>
+                      <label className="focused-user">{focusedUser}</label>
                     )}
                   </td>
                 );

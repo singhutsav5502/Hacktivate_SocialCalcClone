@@ -7,8 +7,8 @@ td {
   border: 1px solid #ccc;
   padding: 0;
   position: relative;
-  height: 30px; /* Set a fixed height for the cells */
-  width: 100px; /* Set a fixed width for the cells */
+  height: 30px;
+  width: 100px;
 }
 
 input {
@@ -17,21 +17,22 @@ input {
   border: none;
   padding: 5px;
   box-sizing: border-box;
-  outline: none; /* Remove the default outline on focus */
+  outline: none;
 }
 
 .highlight {
-  border: 2px solid blue;
-  box-sizing: border-box; /* Ensure the border does not cause layout shift */
+  border: 2px solid rgb(0, 0, 0);
 }
 
 .focused-user {
   position: absolute;
-  background-color: yellow;
+  background-color: rgba(0, 0, 0,0.5);
+  color:#eee;
   padding: 2px 5px;
-  border-radius: 3px;
-  font-size: 12px;
-  margin-top: -30px; /* Move the tag above the cell */
-  margin-left: -2px; /* Adjust horizontal position if needed */
-  white-space: nowrap; /* Prevent text wrapping */
+  border-top-right-radius: 4px;
+  font-size: 8px;
+  bottom:0;
+  left:0;
+  width: auto;
+  white-space: nowrap;
 }
