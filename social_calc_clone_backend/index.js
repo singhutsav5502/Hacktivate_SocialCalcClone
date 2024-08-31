@@ -1,14 +1,23 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
-require('dotenv').config()
+const cors = require('cors'); // Import cors
+require('dotenv').config();
+
 const app = express();
 const server = http.createServer(app);
+
+// Configure CORS for Express
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: '*', // Allow all origins
     methods: ['GET', 'POST']
   }
 });
@@ -45,10 +54,7 @@ io.on('connection', (socket) => {
 });
 
 // Connect to the MongoDB database
-mongoose.connect(process.env.MONGO_DB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
+mongoose.connect(process.env.MONGO_DB_URL).then(() => {
   console.log('Connected to MongoDB');
   server.listen(5000, () => {
     console.log('Server listening on port 5000');
