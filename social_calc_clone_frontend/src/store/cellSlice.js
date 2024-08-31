@@ -9,7 +9,7 @@ export const updateSessionData = createAsyncThunk(
       const patch = computeDelta(oldValue, newValue); // Compute delta
 
       // Send delta update to server
-      const response = await fetch(`/api/session/update/${sessionId}`, {
+      const response = await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cellId, patch }),
