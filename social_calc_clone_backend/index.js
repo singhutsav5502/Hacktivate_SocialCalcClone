@@ -2,7 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
-const cors = require('cors'); // Import cors
+const cors = require('cors'); 
+const User = require('./models/user')
 require('dotenv').config();
 
 const app = express();
@@ -35,23 +36,44 @@ io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
   // Handle the user joining a session
-  socket.on('joinSession', (sessionId) => {
-    console.log(`User ${socket.id} joined session: ${sessionId}`);
-    socket.join(sessionId); // Join the user to a session-specific room
+  socket.on('joinSession', async ({ sessionId, userId }) => {
+    console.log(`User ${userId} joined session: ${sessionId}`);
+    socket.join(sessionId);
   });
 
   // Handle session data updates
-  socket.on('sessionDataUpdated', ({ cellId, newValue }) => {
+  socket.on('sessionDataUpdated', ({ sessionId, cellId, newValue }) => {
     console.log(`Data updated for cell ${cellId}: ${newValue}`);
     // Notify all users in the session
-    socket.broadcast.to(socket.room).emit('sessionDataUpdated', { cellId, newValue });
+    socket.broadcast.to(sessionId).emit('sessionDataUpdated', { cellId, newValue });
   });
 
   // Handle disconnects
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+
+  // Handle user creation
+  socket.on('createUser', async ({ username, email }) => {
+    try {
+      // Check if user already exists
+      let user = await User.findOne({ $or: [{ username }, { email }] });
+
+      if (!user) {
+        // Create new user
+        user = new User({ username, email });
+        await user.save();
+      }
+
+      // Send user data back to the client
+      socket.emit('userCreated', { userId: user._id, username: user.username, email: user.email });
+    } catch (error) {
+      console.error('Error creating user:', error);
+      socket.emit('error', 'Failed to create user');
+    }
+  });
 });
+
 
 // Connect to the MongoDB database
 mongoose.connect(process.env.MONGO_DB_URL).then(() => {
