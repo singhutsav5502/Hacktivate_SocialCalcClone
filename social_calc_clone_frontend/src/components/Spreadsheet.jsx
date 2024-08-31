@@ -61,11 +61,25 @@ const Spreadsheet = ({ sessionId, userId }) => {
       }
     });
     // Listen for session data updates
-    newSocket.on("sessionDataUpdated", ({ cellId, newValue }) => {
-      setCells((prevCells) => ({
-        ...prevCells,
-        [cellId]: newValue,
-      }));
+    // Handle the received session data
+    newSocket.on("sessionDataUpdated", ({ sessionData }) => {
+      if (Array.isArray(sessionData)) {
+        // Convert the array of entries back into an object
+        const updatedSessionData = sessionData.reduce((acc, [key, value]) => {
+          acc[key] = value;
+          return acc;
+        }, {});
+
+        // Update the cells state with the new data
+        setCells((prevCells) => ({
+          ...prevCells,
+          ...updatedSessionData,
+        }));
+      } else {
+        console.error(
+          "Received sessionData is not in the expected array format"
+        );
+      }
     });
 
     // Listen for cell focus events
