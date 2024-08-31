@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors'); 
-const User = require('./models/user')
+const User = require('./models/user');
 require('dotenv').config();
 
 const app = express();
@@ -51,6 +51,18 @@ io.on('connection', (socket) => {
     socket.broadcast.to(sessionId).emit('sessionDataUpdated', { cellId, newValue });
   });
 
+  // Handle cell focus
+  socket.on('focusCell', ({ sessionId, cellId, username }) => {
+    console.log(`User ${username} focused on cell ${cellId} in session ${sessionId}`);
+    io.to(sessionId).emit('cellFocused', { cellId, username });
+  });
+
+  // Handle cell unfocus
+  socket.on('unfocusCell', ({ sessionId, cellId, username }) => {
+    console.log(`User ${username} unfocused from cell ${cellId} in session ${sessionId}`);
+    io.to(sessionId).emit('cellUnfocused', { cellId, username });
+  });
+
   // Handle disconnects
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
@@ -76,7 +88,6 @@ io.on('connection', (socket) => {
     }
   });
 });
-
 
 // Connect to the MongoDB database
 mongoose.connect(process.env.MONGO_DB_URL).then(() => {

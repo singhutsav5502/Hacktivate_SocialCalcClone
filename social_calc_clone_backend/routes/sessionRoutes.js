@@ -1,8 +1,10 @@
 const express = require('express');
 const Session = require('../models/Session');
-const User = require('../models/user')
+const User = require('../models/user');
 const DiffMatchPatch = require('diff-match-patch');
+const AsyncLock = require('async-lock');
 const dmp = new DiffMatchPatch();
+const lock = new AsyncLock();
 
 const router = express.Router();
 
@@ -37,6 +39,7 @@ router.post('/create', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 router.post('/join/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
   const { username, email } = req.body;
@@ -76,29 +79,42 @@ router.post('/update/:sessionId', async (req, res) => {
   const { cellId, patch } = req.body;
 
   try {
-    const session = await Session.findOne({ sessionId });
-    if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
-    }
+    await lock.acquire(sessionId, async () => {
+      const session = await Session.findOne({ sessionId });
+      if (!session) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
 
-    // Apply delta patch to get the new value
-    const oldValue = session.sessionData.get(cellId)?.value || '';
-    const [newValue] = dmp.patch_apply(patch, oldValue);
-    const isFormula = newValue.startsWith('=');
-    const computedValue = isFormula ? evaluateFormula(newValue.slice(1), session.sessionData) : newValue;
+      // Apply delta patch to get the new value
+      const oldValue = session.sessionData.get(cellId)?.value || '';
+      const [newValue] = dmp.patch_apply(patch, oldValue);
+      const isFormula = newValue.startsWith('=');
+      const computedValue = isFormula ? evaluateFormula(newValue.slice(1), session.sessionData) : newValue;
 
-    // Update the session data
-    session.sessionData.set(cellId, { value: newValue, computedValue });
-    await session.save();
+      // Update the session data
+      session.sessionData.set(cellId, { value: newValue, computedValue });
+      await session.save();
 
-    // Notify all users in the session about the update
-    global.io.to(sessionId).emit('sessionDataUpdated', { cellId, newValue, computedValue });
+      // Notify all users in the session about the update
+      global.io.to(sessionId).emit('sessionDataUpdated', { cellId, newValue, computedValue });
 
-    res.status(200).json({ message: 'Cell updated successfully' });
+      res.status(200).json({ message: 'Cell updated successfully' });
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
   }
+});
+
+// Socket event listeners for cell focus and unfocus
+global.io.on('connection', (socket) => {
+  socket.on('focusCell', ({ sessionId, cellId, username }) => {
+    global.io.to(sessionId).emit('cellFocused', { cellId, username });
+  });
+
+  socket.on('unfocusCell', ({ sessionId, cellId, username }) => {
+    global.io.to(sessionId).emit('cellUnfocused', { cellId, username });
+  });
 });
 
 module.exports = router;

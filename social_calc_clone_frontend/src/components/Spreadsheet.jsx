@@ -4,9 +4,12 @@ import { setCellValue, updateSessionData } from '../store/cellSlice';
 import { setUser } from '../store/userSlice';
 import { evaluateFormula } from '../utils/formulaEvaluator';
 import io from 'socket.io-client';
+import './Spreadsheet.css'; 
 
 const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
+  const [focusedCell, setFocusedCell] = useState(null);
+  const [focusedUser, setFocusedUser] = useState(null);
   const dispatch = useDispatch();
   const cells = useSelector((state) => state.cells.cells);
   const username = useSelector((state) => state.user.username);
@@ -23,7 +26,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
 
     // Handle the response
     newSocket.on('userCreated', (data) => {
-      setUser(data);
+      dispatch(setUser(data));
       alert(`User created: ${data.username}`);
     });
 
@@ -31,17 +34,34 @@ const Spreadsheet = ({ sessionId, userId }) => {
     newSocket.on('error', (message) => {
       alert(message);
     });
+
     // Join the session
-    newSocket.emit('joinSession', {sessionId,userId});
+    newSocket.emit('joinSession', { sessionId, userId });
 
     // Listen for updates
     newSocket.on('sessionDataUpdated', ({ cellId, newValue, computedValue }) => {
       dispatch(setCellValue({ cellId, value: newValue, computedValue }));
     });
 
+    // Listen for cell focus events
+    newSocket.on('cellFocused', ({ cellId, username }) => {
+      setFocusedCell(cellId);
+      setFocusedUser(username);
+    });
+
+    // Listen for cell unfocus events
+    newSocket.on('cellUnfocused', ({ cellId }) => {
+      if (focusedCell === cellId) {
+        setFocusedCell(null);
+        setFocusedUser(null);
+      }
+    });
+
     // Clean up when the component unmounts
     return () => {
       newSocket.off('sessionDataUpdated');
+      newSocket.off('cellFocused');
+      newSocket.off('cellUnfocused');
       newSocket.disconnect();
     };
   }, [sessionId, dispatch]);
@@ -62,6 +82,16 @@ const Spreadsheet = ({ sessionId, userId }) => {
     dispatch(updateSessionData({ sessionId, cellId, newValue, oldValue }));
   };
 
+  const handleFocus = (event) => {
+    const cellId = event.target.id;
+    socket.emit('focusCell', { sessionId, cellId, username });
+  };
+
+  const handleBlur = (event) => {
+    const cellId = event.target.id;
+    socket.emit('unfocusCell', { sessionId, cellId, username });
+  };
+
   return (
     <div>
       <table>
@@ -77,8 +107,13 @@ const Spreadsheet = ({ sessionId, userId }) => {
                       type="text"
                       value={cells[cellId] || ''}
                       onChange={handleCellChange}
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                      className={focusedCell === cellId ? 'highlight' : ''}
                     />
-                    {/* <div>{computedValues[cellId] || ''}</div> */}
+                    {focusedCell === cellId && focusedUser && (
+                      <div className="focused-user">{focusedUser}</div>
+                    )}
                   </td>
                 );
               })}
