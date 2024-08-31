@@ -5,6 +5,7 @@ import { setUser } from '../store/userSlice';
 import { evaluateFormula } from '../utils/formulaEvaluator';
 import io from 'socket.io-client';
 import './Spreadsheet.css'; 
+import Toolbar from './Toolbar'; // Import the Toolbar component
 
 const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
@@ -92,8 +93,20 @@ const Spreadsheet = ({ sessionId, userId }) => {
     socket.emit('unfocusCell', { sessionId, cellId, username });
   };
 
+  const addRow = () => {
+    socket.emit('addRow', { sessionId });
+  };
+
+  const addColumn = () => {
+    socket.emit('addColumn', { sessionId });
+  };
+
   return (
     <div>
+      <Toolbar
+        onSave={addRow}
+        onLoad={addColumn}
+      />
       <table>
         <tbody>
           {Array.from({ length: 10 }).map((_, rowIndex) => (
