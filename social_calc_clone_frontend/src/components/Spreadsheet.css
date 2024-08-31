@@ -21,10 +21,9 @@ input {
 }
 
 .highlight {
-  border: 2px solid rgb(0, 0, 0);
+  border: 2px solid rgb(0, 98, 255);
 }
-
-.focused-user {
+.focused-user{
   position: absolute;
   background-color: rgba(0, 0, 0,0.5);
   color:#eee;
@@ -35,4 +34,10 @@ input {
   left:0;
   width: auto;
   white-space: nowrap;
+  user-select: none;
+  opacity: 0;
+  transition: all 0.1s ease-in-out;
+}
+td:hover .focused-user{
+  opacity: 1;
 }
