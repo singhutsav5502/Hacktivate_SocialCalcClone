@@ -105,7 +105,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
     };
   }, [sessionId, username, email, userId]);
 
-  const handleCellChange = async (event) => {
+  const updateCellVal= (event)=>{
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
 
@@ -114,6 +114,16 @@ const Spreadsheet = ({ sessionId, userId }) => {
       ...prevCells,
       [cellId]: newValue,
     }));
+  }
+  const handleCellChange = async (event) => {
+    // const cellId = event.target.id;
+    // const newValue = event.target.value; // New value or formula
+
+    // // Update local state
+    // setCells((prevCells) => ({
+    //   ...prevCells,
+    //   [cellId]: newValue,
+    // }));
 
     try {
       console.log(cells);
@@ -137,6 +147,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
   };
 
   const handleBlur = (event) => {
+    handleCellChange(event)
     const cellId = event.target.id;
     socket.emit("unfocusCell", { sessionId, cellId, username });
   };
@@ -166,7 +177,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
                       id={cellId}
                       type="text"
                       value={cells[cellId] || ""}
-                      onChange={handleCellChange}
+                      onChange={updateCellVal}
                       onFocus={handleFocus}
                       onBlur={handleBlur}
                       className={focusedCell === cellId ? "highlight" : ""}
