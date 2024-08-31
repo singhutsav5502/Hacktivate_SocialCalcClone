@@ -1,36 +1,56 @@
+// server.js
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
-const sessionRoutes = require('./routes/sessionRoutes');
+const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: {
-    origin: '*', // Adjust based on your CORS policy
-    methods: ['GET', 'POST'],
-  },
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
 });
 
-// Make io accessible globally
-global.io = io;
-
+// Set up middleware
 app.use(express.json());
+app.set('io', io); // Store io instance in the app for access in routes
+
+// Session route handlers
+const sessionRoutes = require('./routes/sessionRoutes');
 app.use('/api/session', sessionRoutes);
 
-// Socket.io connection handling
+// WebSocket event handling
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
+  console.log('A user connected:', socket.id);
 
+  // Handle the user joining a session
   socket.on('joinSession', (sessionId) => {
-    socket.join(sessionId);
-    console.log(`Client ${socket.id} joined session ${sessionId}`);
+    console.log(`User ${socket.id} joined session: ${sessionId}`);
+    socket.join(sessionId); // Join the user to a session-specific room
   });
 
+  // Handle session data updates
+  socket.on('sessionDataUpdated', ({ cellId, newValue }) => {
+    console.log(`Data updated for cell ${cellId}: ${newValue}`);
+    // Notify all users in the session
+    socket.broadcast.to(socket.room).emit('sessionDataUpdated', { cellId, newValue });
+  });
+
+  // Handle disconnects
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('User disconnected:', socket.id);
   });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Connect to the MongoDB database
+mongoose.connect('mongodb://localhost:27017/socialcalc', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('Connected to MongoDB');
+  server.listen(5000, () => {
+    console.log('Server listening on port 5000');
+  });
+}).catch(err => console.error('Database connection error:', err));
