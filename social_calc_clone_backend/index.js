@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
-
+require('dotenv').config()
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
 });
 
 // Connect to the MongoDB database
-mongoose.connect('mongodb://localhost:27017/socialcalc', {
+mongoose.connect(process.env.MONGO_DB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {

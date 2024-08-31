@@ -14,6 +14,8 @@ social_calc_clone_backend/node_modules
 
 # misc
 
+social_calc_clone_frontend/.env
+social_calc_clone_backend/.env
 .DS_Store
 .env.local
 .env.development.local
