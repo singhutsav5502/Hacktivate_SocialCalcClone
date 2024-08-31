@@ -71,7 +71,7 @@ router.post('/join/:sessionId', async (req, res) => {
 });
 
 // Endpoint to update session data
-router.post('/:sessionId/update', async (req, res) => {
+router.post('/update/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
   const { cellId, patch } = req.body;
 
