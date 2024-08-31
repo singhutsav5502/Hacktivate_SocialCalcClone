@@ -6,10 +6,11 @@ import { ThemeProvider } from '@mui/material';
 import theme from './theme';
 const App = () => {
   const sessionId = useSelector((state) => state.session.sessionId);
+  const userId = useSelector((state) => state.user.userId);
 
   return (
     <ThemeProvider theme={theme}>
-      {!sessionId ? <SessionMenu /> : <Spreadsheet sessionId={sessionId}/>}
+      {!sessionId ? <SessionMenu /> : <Spreadsheet sessionId={sessionId} userId={userId} />}
     </ThemeProvider>
   );
 };

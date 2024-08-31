@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { setSessionId, setSessionData } from "../store/sessionSlice";
+import { setSessionId } from "../store/sessionSlice";
+import { setUser, setUsername, setEmail } from "../store/userSlice";
 import { Typography, Button, TextField, Box, IconButton } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import CardComponent from "./CardComponent";
@@ -8,8 +9,8 @@ import axios from "axios";
 import styles from "./SessionMenu.module.css";
 const SessionMenu = () => {
   const [sessionInput, setSessionInput] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsernameInput] = useState("");
+  const [email, setEmailInput] = useState("");
   const dispatch = useDispatch();
 
   const handleCreateSession = async () => {
@@ -17,14 +18,15 @@ const SessionMenu = () => {
       alert("Please enter both username and email.");
       return;
     }
-
+    //  create session on server side first
     try {
       const response = await axios.post(
         "http://localhost:5000/api/session/create",
         { username, email }
       );
-      const { sessionId } = response.data;
+      const { sessionId, userId } = response.data;
       dispatch(setSessionId(sessionId));
+      dispatch(setUser({ userId, username, email }));
       alert(`New session created with ID: ${sessionId}`);
     } catch (error) {
       console.error("Error creating session:", error);
@@ -37,22 +39,11 @@ const SessionMenu = () => {
       alert("Please enter session ID, username, and email.");
       return;
     }
-
-    try {
-      const response = await axios.get(
-        `http://localhost:5000/api/session/join/${sessionInput}`,
-        { params: { username, email } } // Correct use of params
-      );
-      const { sessionId, sessionData } = response.data;
-      dispatch(setSessionId(sessionId));
-      dispatch(setSessionData(sessionData));
-      alert(`Joined session with ID: ${sessionId}`);
-    } catch (error) {
-      console.error("Error joining session:", error);
-      alert(
-        "Failed to join session. Please check the session ID and try again."
-      );
-    }
+    // set the intended session ID
+    // automatically moves to spreadsheet page which joins based on sessionId
+    dispatch(setSessionId(sessionInput));
+    dispatch(setUsername(username));
+    dispatch(setEmail(email));
   };
 
   return (
@@ -112,7 +103,7 @@ const SessionMenu = () => {
               variant="outlined"
               fullWidth
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsernameInput(e.target.value)}
             />
             <TextField
               label="Email"
@@ -120,7 +111,7 @@ const SessionMenu = () => {
               fullWidth
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmailInput(e.target.value)}
             />
           </Box>
           <TextField
@@ -135,19 +126,22 @@ const SessionMenu = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              gap:'1rem',
-              marginTop:'1rem'
+              gap: "1rem",
+              marginTop: "1rem",
             }}
           >
-            <Button variant="outlined" onClick={handleCreateSession}
-            sx={{flex:'1'}}>
+            <Button
+              variant="outlined"
+              onClick={handleCreateSession}
+              sx={{ flex: "1" }}
+            >
               Create New Session
             </Button>
             <Button
               variant="contained"
               color="secondary"
               onClick={handleJoinSession}
-              sx={{flex:'1'}}
+              sx={{ flex: "1" }}
             >
               Join Session
             </Button>

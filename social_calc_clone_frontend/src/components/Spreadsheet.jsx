@@ -1,22 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCellValue, updateSessionData } from '../store/cellSlice';
+import { setUser } from '../store/userSlice';
 import { evaluateFormula } from '../utils/formulaEvaluator';
 import io from 'socket.io-client';
 
-const Spreadsheet = ({ sessionId }) => {
+const Spreadsheet = ({ sessionId, userId }) => {
   const [socket, setSocket] = useState(null);
   const dispatch = useDispatch();
   const cells = useSelector((state) => state.cells.cells);
+  const username = useSelector((state) => state.user.username);
+  const email = useSelector((state) => state.user.email);
   const computedValues = useSelector((state) => state.cells.computedValues);
 
   useEffect(() => {
-    // Initialize the socket connection when the component mounts
+    if (!sessionId) return; // Exit early if sessionId is not available
+
+    // Initialize the socket connection
     const newSocket = io('http://localhost:5000');
     setSocket(newSocket);
+    socket.emit('createUser', { username, email });
 
+    // Handle the response
+    socket.on('userCreated', (data) => {
+      setUser(data);
+      alert(`User created: ${data.username}`);
+    });
+
+    // Handle errors
+    socket.on('error', (message) => {
+      alert(message);
+    });
     // Join the session
-    newSocket.emit('joinSession', sessionId);
+    newSocket.emit('joinSession', {sessionId,userId});
 
     // Listen for updates
     newSocket.on('sessionDataUpdated', ({ cellId, newValue, computedValue }) => {
@@ -62,7 +78,7 @@ const Spreadsheet = ({ sessionId }) => {
                       value={cells[cellId] || ''}
                       onChange={handleCellChange}
                     />
-                    <div>{computedValues[cellId] || ''}</div>
+                    {/* <div>{computedValues[cellId] || ''}</div> */}
                   </td>
                 );
               })}
