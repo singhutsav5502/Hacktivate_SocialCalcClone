@@ -129,6 +129,43 @@ router.post('/update/:sessionId', async (req, res) => {
   }
 });
 
+// Route to get session information for a user
+router.post('/getSessions', async (req, res) => {
+  const { username, email } = req.body;
+
+  try {
+    // Find the user by username and email
+    const user = await User.findOne({ username, email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get the list of session IDs the user can join (from the user's sessions array)
+    const sessionIds = user.sessions;
+
+    // Find sessions by session IDs and populate the users field with their usernames
+    const sessions = await Session.find({ _id: { $in: sessionIds } })
+      .populate('users', 'username') // Populate only the username field of the users
+      .select('sessionId createdAt users'); // Select the fields you want to return
+
+    // Transform the sessions data to return creation time and usernames
+    const sessionInfo = sessions.map(session => ({
+      sessionId: session.sessionId,
+      createdAt: session.createdAt,
+      users: session.users.map(user => user.username) // Extract usernames
+    }));
+
+    // Return the session information
+    res.status(200).json({ sessions: sessionInfo });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+module.exports = router;
+
+
 // Socket event listeners for cell focus and unfocus
 global.io.on('connection', (socket) => {
   socket.on('focusCell', ({ sessionId, cellId, username }) => {
