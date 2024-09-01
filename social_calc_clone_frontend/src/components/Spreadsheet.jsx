@@ -6,12 +6,11 @@ import Toolbar from "./Toolbar";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { evaluate } from 'mathjs';
+import { evaluate } from "mathjs";
 
 const Spreadsheet = () => {
   const [socket, setSocket] = useState(null);
-  const [focusedCell, setFocusedCell] = useState(null);
-  const [focusedUser, setFocusedUser] = useState(null);
+  const [focusedCells, setFocusedCells] = useState([]);
   const [cells, setCells] = useState({}); // Local state for cells
   const [rows, setRows] = useState(52);
   const [columns, setColumns] = useState(52);
@@ -28,7 +27,7 @@ const Spreadsheet = () => {
         return `"${(data[cellId] || "").replace(/"/g, '""')}"`; // Escape double quotes
       }).join(",");
     }).join("\n");
-  
+
     return body;
   };
 
@@ -57,7 +56,7 @@ const Spreadsheet = () => {
       rows.forEach((row, rowIndex) => {
         const columns = row.split(",");
         maxCols = Math.max(maxCols, columns.length);
-      
+
         columns.forEach((col, colIndex) => {
           const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
           newCells[cellId] = col.replace(/(^"|"$)/g, "").replace(/""/g, '"'); // Unescape double quotes
@@ -65,27 +64,30 @@ const Spreadsheet = () => {
       });
 
       setCells(newCells);
-      setColumns((state)=>Math.max(state,columns))
-      setRows((state)=>Math.max(state,rows.length))
+      setColumns((state) => Math.max(state, columns));
+      setRows((state) => Math.max(state, rows.length));
 
       // Send updates to the server for each cell individually
       try {
-        await fetch(`${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionData: Object.entries(newCells),
-            senderId: userId,
-            rows: Math.max(rows, rows.length),
-            columns: Math.max(columns, maxCols),
-          }),
-        });
+        await fetch(
+          `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sessionData: Object.entries(newCells),
+              senderId: userId,
+              rows: Math.max(rows, rows.length),
+              columns: Math.max(columns, maxCols),
+            }),
+          }
+        );
       } catch (error) {
         console.error("Error updating session data:", error);
       }
-    }
+    };
     reader.readAsText(file);
   };
 
@@ -109,8 +111,8 @@ const Spreadsheet = () => {
 
   useEffect(() => {
     if (!sessionId || !username || !email) {
-      toast.error("Missing user or session data please try again")
-      navigate('/login')
+      toast.error("Missing user or session data please try again");
+      navigate("/login");
       return;
     }
 
@@ -156,7 +158,7 @@ const Spreadsheet = () => {
     newSocket.on(
       "sessionDataUpdated",
       ({ sessionData, rows, columns, senderId }) => {
-        console.log(rows,columns, sessionData)
+        console.log(rows, columns, sessionData);
         if (senderId !== userId) {
           // Ignore updates from the current user
           if (Array.isArray(sessionData)) {
@@ -187,18 +189,16 @@ const Spreadsheet = () => {
       }
     );
 
-    // Listen for cell focus events
     newSocket.on("cellFocused", ({ cellId, username }) => {
-      setFocusedCell(cellId);
-      setFocusedUser(username);
+      setFocusedCells((prev) => [...prev, { cellId, username }]);
     });
 
-    // Listen for cell unfocus events
-    newSocket.on("cellUnfocused", ({ cellId }) => {
-      if (focusedCell === cellId) {
-        setFocusedCell(null);
-        setFocusedUser(null);
-      }
+    newSocket.on("cellUnfocused", ({ cellId, username }) => {
+      setFocusedCells((prev) =>
+        prev.filter(
+          (cell) => !(cell.cellId === cellId && cell.username === username)
+        )
+      );
     });
 
     // Clean up when the component unmounts
@@ -225,18 +225,21 @@ const Spreadsheet = () => {
           ...cells,
           [cellId]: newValue,
         };
-        await fetch(`${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionData: Object.entries(updatedCells),
-            senderId: userId,
-            rows:rows,
-            columns:columns
-          }),
-        });
+        await fetch(
+          `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sessionData: Object.entries(updatedCells),
+              senderId: userId,
+              rows: rows,
+              columns: columns,
+            }),
+          }
+        );
       } catch (error) {
         console.error("Error updating session data:", error);
       }
@@ -271,18 +274,21 @@ const Spreadsheet = () => {
             ...cells,
             [cellId]: newValue,
           };
-          await fetch(`${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              sessionData: Object.entries(updatedCells),
-              senderId: userId,
-              rows:rows,
-              columns:columns,
-            }),
-          });
+          await fetch(
+            `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                sessionData: Object.entries(updatedCells),
+                senderId: userId,
+                rows: rows,
+                columns: columns,
+              }),
+            }
+          );
         } catch (error) {
           console.error("Error updating session data:", error);
         }
@@ -334,11 +340,12 @@ const Spreadsheet = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: rows }).map((_, rowIndex) => (
+          {Array.from({ length: rows }).map((_, rowIndex) => (
               <tr key={`row-${rowIndex}`}>
                 <th className="header">{rowIndex + 1}</th>
                 {Array.from({ length: columns }).map((_, colIndex) => {
                   const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
+                  const focusedCell = focusedCells.find(cell => cell.cellId === cellId);
                   return (
                     <td key={cellId}>
                       <input
@@ -348,10 +355,10 @@ const Spreadsheet = () => {
                         onChange={handleCellChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        className={focusedCell === cellId ? "highlight" : ""}
+                        className={focusedCell ? "highlight" : ""}
                       />
-                      {focusedCell === cellId && focusedUser && (
-                        <label className="focused-user">{focusedUser}</label>
+                      {focusedCell && (
+                        <label className="focused-user">{focusedCell.username}</label>
                       )}
                     </td>
                   );
