@@ -50,47 +50,46 @@ router.post('/create', async (req, res) => {
 });
 
 
-router.post('/join/:sessionId', async (req, res) => {
-  const { sessionId } = req.params;
-  const { username, email } = req.body;
+// router.post('/join/:sessionId', async (req, res) => {
+//   const { sessionId } = req.params;
+//   const { username, email } = req.body;
 
-  try {
-    const session = await Session.findOne({ sessionId }).populate('users');
-    if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
-    }
+//   try {
+//     const session = await Session.findOne({ sessionId }).populate('users');
+//     if (!session) {
+//       return res.status(404).json({ message: 'Session not found' });
+//     }
 
-    let user = await User.findOne({ $or: [{ username }, { email }] });
-    let userId;
+//     let user = await User.findOne({ $or: [{ username }, { email }] });
+//     let userId;
+//     if (!user) {
+//       // Create a new user
+//       user = new User({ username, email });
+//       await user.save();
+//     }
+//     userId = user._id;
 
-    if (!user) {
-      // Create a new user
-      user = new User({ username, email });
-      await user.save();
-    }
-    userId = user._id;
-
-    // Add user to the session if not already present
-    if (!session.users.includes(userId)) {
-      // Add the user to the session
-      session.users.push(user._id);
-      await session.save();
-      res.status(200).json({ message: 'User added to session', session });
-    }
-    // Send the entire session data to the client
-    res.status(200).json({
-      sessionId: session.sessionId,
-      sessionData: Array.from(session.sessionData.entries()).reduce((acc, [key, value]) => {
-        acc[key] = value;
-        return acc;
-      }, {}),
-      userId
-    });
-  } catch (error) {
-    console.error('Error joining session:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
+//     // Add user to the session if not already present
+//     if (!session.users.includes(userId)) {
+//       // Add the user to the session
+//       session.users.push(user._id);
+//       await session.save();
+//       res.status(200).json({ message: 'User added to session', session });
+//     }
+//     // Send the entire session data to the client
+//     res.status(200).json({
+//       sessionId: session.sessionId,
+//       sessionData: Array.from(session.sessionData.entries()).reduce((acc, [key, value]) => {
+//         acc[key] = value;
+//         return acc;
+//       }, {}),
+//       userId
+//     });
+//   } catch (error) {
+//     console.error('Error joining session:', error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
 // Endpoint to update session data
 router.post('/update/:sessionId', async (req, res) => {
   const { senderId } = req.body;
@@ -145,7 +144,7 @@ router.post('/getSessions', async (req, res) => {
     const sessionIds = user.sessions;
 
     // Find sessions by session IDs and populate the users field with their usernames
-    const sessions = await Session.find({ _id: { $in: sessionIds } })
+    const sessions = await Session.find({sessionId: { $in: sessionIds } })
       .populate('users', 'username') // Populate only the username field of the users
       .select('sessionId createdAt users'); // Select the fields you want to return
 

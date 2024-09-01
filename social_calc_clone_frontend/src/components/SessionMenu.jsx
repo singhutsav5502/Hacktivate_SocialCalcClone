@@ -1,33 +1,91 @@
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
+import React, { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { setSessionId } from "../store/sessionSlice";
 import { setUser, setUsername, setEmail } from "../store/userSlice";
-import { Typography, Button, TextField, Box, IconButton } from "@mui/material";
+import {
+  Typography,
+  Button,
+  TextField,
+  Box,
+  IconButton,
+  Collapse,
+} from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CardComponent from "./CardComponent";
 import axios from "axios";
 import styles from "./SessionMenu.module.css";
+import io from "socket.io-client";
+
 const SessionMenu = () => {
+  const [socket, setSocket] = useState(null);
   const [sessionInput, setSessionInput] = useState("");
-  const [username, setUsernameInput] = useState("");
-  const [email, setEmailInput] = useState("");
+  const [userSessions, setUserSessions] = useState([]);
+  const { username, email, userId } = useSelector((state) => state.user);
+  const [open, setOpen] = useState(false); // State to control the collapse
+
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleToggle = () => {
+    setOpen(!open);
+  };
+  useEffect(() => {
+    // Initialize the socket connection
+    const newSocket = io("http://localhost:5000");
+    setSocket(newSocket);
+    newSocket.emit("createUser", { username, email });
+
+    // Handle the response
+    newSocket.on("userCreated", (data) => {
+      dispatch(setUser(data));
+      alert(`User created: ${data.username}`);
+    });
+
+    // Handle errors
+    newSocket.on("error", (message) => {
+      alert(message);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [username, email, dispatch]);
+
+  useEffect(() => {
+    const fetchUserSessions = async () => {
+      if (username && email) {
+        try {
+          const response = await axios.post(
+            "http://localhost:5000/api/session/getSessions",
+            { username, email }
+          );
+          setUserSessions(response.data.sessions.reverse());
+        } catch (error) {
+          console.error("Error fetching user sessions:", error);
+        }
+      }
+    };
+
+    fetchUserSessions();
+  }, [username, email]);
 
   const handleCreateSession = async () => {
     if (!username || !email) {
       alert("Please enter both username and email.");
       return;
     }
-    //  create session on server side first
+
     try {
       const response = await axios.post(
         "http://localhost:5000/api/session/create",
         { username, email }
       );
-      const { sessionId, userId } = response.data;
+      const { sessionId } = response.data;
       dispatch(setSessionId(sessionId));
-      dispatch(setUser({ userId, username, email }));
-      alert(`New session created with ID: ${sessionId}`);
+      navigate(`/session/${userId}/${sessionId}`); // Navigate to the new session
     } catch (error) {
       console.error("Error creating session:", error);
       alert("Failed to create a new session. Please try again.");
@@ -39,32 +97,36 @@ const SessionMenu = () => {
       alert("Please enter session ID, username, and email.");
       return;
     }
-    // set the intended session ID
-    // automatically moves to spreadsheet page which joins based on sessionId
+
     dispatch(setSessionId(sessionInput));
-    dispatch(setUsername(username));
-    dispatch(setEmail(email));
+    navigate(`/session/${userId}/${sessionInput}`); // Navigate to the joined session
+  };
+  const handleJoin = (sessionId) => {
+    // Navigate to the spreadsheet with the sessionId
+    navigate(`/session/${userId}/${sessionId}`);
   };
 
   return (
-    <div
-      className={styles.movingGradient}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100vw",
-        height: "100vh",
-      }}
-    >
-      <CardComponent>
-        <div>
+    <div className={styles.movingGradient}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          flexDirection: "column",
+          height: "100vh",
+          gap: "1rem",
+        }}
+      >
+        <CardComponent>
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              height: "25vh",
+              width: "30vw",
             }}
           >
             <IconButton
@@ -88,46 +150,20 @@ const SessionMenu = () => {
             </Typography>
           </div>
 
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              gap: "1rem",
-              marginBottom: "1rem",
-              marginTop: "3rem",
-              width: "100%",
-            }}
-          >
-            <TextField
-              label="Username"
-              variant="outlined"
-              fullWidth
-              value={username}
-              onChange={(e) => setUsernameInput(e.target.value)}
-            />
-            <TextField
-              label="Email"
-              variant="outlined"
-              fullWidth
-              type="email"
-              value={email}
-              onChange={(e) => setEmailInput(e.target.value)}
-            />
-          </Box>
           <TextField
             label="Enter Session ID"
             variant="outlined"
             fullWidth
             value={sessionInput}
             onChange={(e) => setSessionInput(e.target.value)}
+            sx={{ marginBottom: "1rem", marginTop: "3rem" }}
           />
+
           <Box
-            style={{
+            sx={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
               gap: "1rem",
-              marginTop: "1rem",
             }}
           >
             <Button
@@ -146,8 +182,58 @@ const SessionMenu = () => {
               Join Session
             </Button>
           </Box>
-        </div>
-      </CardComponent>
+        </CardComponent>
+
+        {/* Display owned sessions */}
+        <Box sx={{ position: "absolute", backgroundColor:'white', bottom:'0', left:'0', right:'0' }}>
+          <Typography variant="h4" gutterBottom sx={{ textAlign: "center",marginTop:'2vh' }}>
+            Your Sessions
+          </Typography>
+          <IconButton
+            onClick={handleToggle}
+            sx={{ position: "absolute", top: 0, right: 0 }}
+          >
+            {!open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+          <Collapse in={open}>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                justifyContent: "space-evenly",
+              }}
+            >
+              {userSessions.length > 0 ? (
+                <>
+                  {userSessions.map((session) => (
+                    <CardComponent key={session.sessionId}>
+                      <Typography>
+                        <strong>Session ID:</strong> {session.sessionId}
+                        <br />
+                        <strong>Created At:</strong>{" "}
+                        {new Date(session.createdAt).toLocaleString()}
+                        <br />
+                        <strong>Users:</strong> {session.users.join(", ")}
+                      </Typography>
+                      <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleJoin(session.sessionId)}
+                    sx={{ marginTop: 2 }}
+                  >
+                    Join
+                  </Button>
+                    </CardComponent>
+                  ))}
+                </>
+              ) : (
+                <Typography>No sessions available</Typography>
+              )}
+            </Box>
+          </Collapse>
+        </Box>
+      </Box>
     </div>
   );
 };

@@ -40,13 +40,28 @@ io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
     // Handle the user joining a session
-    socket.on('joinSession', async ({ sessionId, userId }) => {
+    socket.on('joinSession', async ({ sessionId, userId, username, email }) => {
       console.log(`User ${userId} joined session: ${sessionId}`);
       socket.join(sessionId);
-  
+    
       try {
+        // Fetch the user by username and email
+        const user = await User.findOne({ username, email });
+        
+        if (!user) {
+          console.error('User not found');
+          return;
+        }
+        
+        // Add the user ID to the session's users array
         const session = await Session.findOne({ sessionId });
+        
         if (session) {
+          if (!session.users.includes(user._id)) {
+            session.users.push(user._id);
+            await session.save();
+          }
+    
           // Send the entire session data to the newly joined user
           socket.emit('sessionData', {
             sessionId: session.sessionId,
@@ -57,7 +72,7 @@ io.on('connection', (socket) => {
           });
         }
       } catch (error) {
-        console.error('Error fetching session data:', error);
+        console.error('Error processing join session:', error);
       }
     });
 

@@ -7,7 +7,7 @@ const sessionSchema = new mongoose.Schema({
     of: String // Each value in the Map is a string
   },
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Users in this session
-});
+}, { timestamps: true }); // This option adds createdAt and updatedAt fields
 
 const Session = mongoose.model('Session', sessionSchema);
 module.exports = Session;
