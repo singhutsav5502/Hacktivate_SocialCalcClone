@@ -60,9 +60,9 @@ const Spreadsheet = () => {
     reader.onload = async (e) => {
       let maxCols = 52;
       const text = e.target.result;
-      const rows = text.split("\n");
+      const rowsArray = text.split("\n");
       const newCells = {};
-      rows.forEach((row, rowIndex) => {
+      rowsArray.forEach((row, rowIndex) => {
         const columns = row.split(",");
         maxCols = Math.max(maxCols, columns.length);
 
@@ -88,7 +88,7 @@ const Spreadsheet = () => {
             body: JSON.stringify({
               sessionData: Object.entries(newCells),
               senderId: userId,
-              rows: Math.max(rows, rows.length),
+              rows: Math.max(rows, rowsArray.length),
               columns: Math.max(columns, maxCols),
             }),
           }
