@@ -70,7 +70,7 @@ const SessionMenu = () => {
       if (username && email) {
         try {
           const response = await axios.post(
-            `${process.env.REACT_APP_SERVER_URL}/api/session/getSessions`,
+            `${process.env.REACT_APP_SERVER_URL}api/session/getSessions`,
             { username, email }
           );
           setUserSessions(response.data.sessions.reverse());

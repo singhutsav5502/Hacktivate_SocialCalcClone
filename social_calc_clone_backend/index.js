@@ -190,7 +190,7 @@ io.on('connection', (socket) => {
 // Connect to the MongoDB database
 mongoose.connect(process.env.MONGO_DB_URL).then(() => {
   console.log('Connected to MongoDB');
-  server.listen(5000, () => {
+  server.listen(5000, '0.0.0.0', () => {
     console.log('Server listening on port 5000');
   });
 }).catch(err => console.error('Database connection error:', err));
