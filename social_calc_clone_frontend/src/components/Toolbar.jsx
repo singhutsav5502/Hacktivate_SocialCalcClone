@@ -24,10 +24,10 @@ const Toolbar = ({ addRow, addColumn, sessionId }) => {
     <MuiToolbar
       sx={{
         justifyContent: "space-between",
-        padding: "0px !important", // Smaller padding
+        padding: "0px 2vw 0px 0px!important", // Smaller padding
         minHeight: "32px", // Adjusted height
         height: "2vh",
-        backgroundColor: "white",
+        backgroundColor: "#ddd",
         borderBottom: "1px solid #ddd",
         gap: "1rem",
       }}

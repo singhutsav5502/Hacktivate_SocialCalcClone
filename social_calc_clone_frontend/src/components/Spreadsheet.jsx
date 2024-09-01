@@ -11,11 +11,14 @@ const Spreadsheet = () => {
   const [focusedCell, setFocusedCell] = useState(null);
   const [focusedUser, setFocusedUser] = useState(null);
   const [cells, setCells] = useState({}); // Local state for cells
+  const [rows,setRows] = useState(52);
+  const [columns,setColumns] = useState(52);
   const [isRemoteUpdate, setIsRemoteUpdate] = useState(false); // Flag for remote updates
   const dispatch = useDispatch();
   const username = useSelector((state) => state.user.username);
   const email = useSelector((state) => state.user.email);
   const { sessionId, userId } = useParams();
+
   useEffect(() => {
     if (!sessionId || !username || !email) return; // Exit early if sessionId, username, or email are not available
 
@@ -28,11 +31,10 @@ const Spreadsheet = () => {
     });
 
     // Join the session
-    newSocket.emit("joinSession", { sessionId, userId, username, email});
+    newSocket.emit("joinSession", { sessionId, userId, username, email });
 
     newSocket.on("sessionData", (data) => {
       console.log("Received sessionData:", data);
-      console.log(typeof data.sessionData);
       if (Array.isArray(data.sessionData)) {
         // If sessionData is an array, format it into an object
         const formattedSessionData = data.sessionData.reduce(
@@ -45,6 +47,8 @@ const Spreadsheet = () => {
 
         // Update local state with the received session data
         setCells(formattedSessionData);
+        setRows((state)=>data.rows);
+        setColumns((state)=>data.columns);
       } else if (
         typeof data.sessionData === "object" &&
         data.sessionData !== null
@@ -57,8 +61,7 @@ const Spreadsheet = () => {
     });
 
     // Listen for session data updates
-    // Handle the received session data
-    newSocket.on("sessionDataUpdated", ({ sessionData, senderId }) => {
+    newSocket.on("sessionDataUpdated", ({ sessionData, rows, columns, senderId }) => {
       if (senderId !== userId) {
         // Ignore updates from the current user
         if (Array.isArray(sessionData)) {
@@ -75,6 +78,8 @@ const Spreadsheet = () => {
             ...prevCells,
             ...updatedSessionData,
           }));
+          setRows((state)=>rows)
+          setColumns((state)=>columns)
         } else {
           console.error(
             "Received sessionData is not in the expected array format"
@@ -99,7 +104,7 @@ const Spreadsheet = () => {
 
     // Clean up when the component unmounts
     return () => {
-      newSocket.off("sessionDataUpdated");
+      newSocket.off("sessionData");
       newSocket.off("cellFocused");
       newSocket.off("cellUnfocused");
       newSocket.disconnect();
@@ -123,7 +128,6 @@ const Spreadsheet = () => {
           ...cells,
           [cellId]: newValue,
         };
-        console.log(updatedCells);
         await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
           method: "POST",
           headers: {
@@ -134,8 +138,6 @@ const Spreadsheet = () => {
             senderId: userId,
           }),
         });
-
-        // Optionally, handle any local updates or dispatches if needed
       } catch (error) {
         console.error("Error updating session data:", error);
       }
@@ -156,45 +158,66 @@ const Spreadsheet = () => {
   };
 
   const addRow = () => {
-    socket.emit("addRow", { sessionId });
+    socket.emit("addRow", { sessionId, userId });
   };
 
   const addColumn = () => {
-    socket.emit("addColumn", { sessionId });
+    socket.emit("addColumn", { sessionId, userId });
+  };
+
+  const getColumnLabel = (index) => {
+    let label = '';
+    let i = index;
+    while (i >= 0) {
+      label = String.fromCharCode((i % 26) + 65) + label;
+      i = Math.floor(i / 26) - 1;
+    }
+    return label;
   };
 
   return (
     <div>
       <Toolbar addRow={addRow} addColumn={addColumn} sessionId={sessionId} />
-      <table>
-        <tbody>
-          {Array.from({ length: 10 }).map((_, rowIndex) => (
-            <tr key={rowIndex}>
-              {Array.from({ length: 10 }).map((_, colIndex) => {
-                const cellId = `${String.fromCharCode(65 + colIndex)}${
-                  rowIndex + 1
-                }`;
-                return (
-                  <td key={cellId}>
-                    <input
-                      id={cellId}
-                      type="text"
-                      value={cells[cellId] || ""}
-                      onChange={handleCellChange}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      className={focusedCell === cellId ? "highlight" : ""}
-                    />
-                    {focusedCell === cellId && focusedUser && (
-                      <label className="focused-user">{focusedUser}</label>
-                    )}
-                  </td>
-                );
-              })}
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th></th> {/* Empty cell for the corner */}
+              {Array.from({ length: columns }).map((_, colIndex) => (
+                <th key={`col-${colIndex}`} className="header">
+                  {getColumnLabel(colIndex)}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Array.from({ length: rows }).map((_, rowIndex) => (
+              <tr key={`row-${rowIndex}`}>
+                <th className="header">{rowIndex + 1}</th>
+                {Array.from({ length: columns }).map((_, colIndex) => {
+                  const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
+                  return (
+                    <td key={cellId}>
+                      <input
+                        id={cellId}
+                        type="text"
+                        value={cells[cellId] || ""}
+                        onChange={handleCellChange}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        className={focusedCell === cellId ? "highlight" : ""}
+                      />
+                      {focusedCell === cellId && focusedUser && (
+                        <label className="focused-user">{focusedUser}</label>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
