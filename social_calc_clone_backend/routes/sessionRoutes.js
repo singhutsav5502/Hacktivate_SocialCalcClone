@@ -54,6 +54,7 @@ router.post('/update/:sessionId', async (req, res) => {
   const { senderId } = req.body;
   const { sessionId } = req.params;
   const { sessionData } = req.body; // Entire sessionData should be sent from the client
+  const { rows, columns } = req.body;
 
   try {
     if (!Array.isArray(sessionData)) {
@@ -76,8 +77,8 @@ router.post('/update/:sessionId', async (req, res) => {
       // Broadcast updated session data to all clients in the session
       global.io.to(sessionId).emit('sessionDataUpdated', {
         sessionData: Array.from(formattedSessionData.entries()),
-        rows: session.rows,
-        columns: session.columns,
+        rows: rows,
+        columns: columns,
         senderId
       });
 

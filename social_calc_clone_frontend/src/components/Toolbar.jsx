@@ -12,9 +12,10 @@ import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import SaveIcon from "@mui/icons-material/Save";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import "./Toolbar.css";
 
-const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV }) => {
+const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV, importFromCSV }) => {
   const handleCopySessionId = () => {
     navigator.clipboard.writeText(sessionId).then(() => {
       console.log("Session ID copied to clipboard");
@@ -42,7 +43,7 @@ const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV }) => {
           alignItems: "center",
           borderRadius: "4px",
           marginLeft: "8px",
-          gap:'1vw'
+          gap: '1vw'
         }}
       >
         <Tooltip title="Export">
@@ -52,6 +53,21 @@ const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV }) => {
             aria-label="export to CSV"
           >
             <SaveIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Import CSV">
+          <IconButton
+            color="primary"
+            aria-label="import CSV"
+            component="label"
+          >
+            <UploadFileIcon />
+            <input
+              type="file"
+              accept=".csv"
+              onChange={importFromCSV}
+              hidden
+            />
           </IconButton>
         </Tooltip>
         <Tooltip title="Add Row">

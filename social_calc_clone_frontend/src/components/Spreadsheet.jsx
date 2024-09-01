@@ -5,6 +5,8 @@ import "./Spreadsheet.css";
 import Toolbar from "./Toolbar";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { evaluate } from 'mathjs';
+
 const Spreadsheet = () => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
@@ -19,18 +21,14 @@ const Spreadsheet = () => {
 
   // CSV
   const convertToCSV = (data, rows, columns) => {
-    const header =
-      Array.from({ length: columns }, (_, colIndex) =>
-        getColumnLabel(colIndex)
-      ).join(",") + "\n";
     const body = Array.from({ length: rows }, (_, rowIndex) => {
       return Array.from({ length: columns }, (_, colIndex) => {
         const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
         return `"${(data[cellId] || "").replace(/"/g, '""')}"`; // Escape double quotes
       }).join(",");
     }).join("\n");
-
-    return header + body;
+  
+    return body;
   };
 
   const exportToCSV = () => {
@@ -45,6 +43,51 @@ const Spreadsheet = () => {
     document.body.removeChild(link);
   };
 
+  const importFromCSV = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      let maxCols = 52;
+      const text = e.target.result;
+      const rows = text.split("\n");
+      const newCells = {};
+      rows.forEach((row, rowIndex) => {
+        const columns = row.split(",");
+        maxCols = Math.max(maxCols, columns.length);
+      
+        columns.forEach((col, colIndex) => {
+          const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
+          newCells[cellId] = col.replace(/(^"|"$)/g, "").replace(/""/g, '"'); // Unescape double quotes
+        });
+      });
+
+      setCells(newCells);
+      setColumns((state)=>Math.max(state,columns))
+      setRows((state)=>Math.max(state,rows.length))
+
+      // Send updates to the server for each cell individually
+      try {
+        await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionData: Object.entries(newCells),
+            senderId: userId,
+            rows: Math.max(rows, rows.length),
+            columns: Math.max(columns, maxCols),
+          }),
+        });
+      } catch (error) {
+        console.error("Error updating session data:", error);
+      }
+    }
+    reader.readAsText(file);
+  };
+
   // Formula Evaluation
   const evaluateFormula = (formula, cells) => {
     try {
@@ -56,7 +99,7 @@ const Spreadsheet = () => {
         .replace("=", ""); // Remove '=' at the beginning of the formula
 
       // Evaluate the expression
-      return eval(expression); // Use eval to compute the result
+      return evaluate(expression); // Use eval to compute the result
     } catch (error) {
       console.error("Error evaluating formula:", error);
       return 0; // Return Empty
@@ -194,6 +237,7 @@ const Spreadsheet = () => {
       setIsRemoteUpdate(false);
     }
   };
+
   const handleFocus = (event) => {
     const cellId = event.target.id;
     socket.emit("focusCell", { sessionId, cellId, username });
@@ -257,6 +301,7 @@ const Spreadsheet = () => {
     }
     return label;
   };
+
   return (
     <div>
       <Toolbar
@@ -264,6 +309,7 @@ const Spreadsheet = () => {
         addColumn={addColumn}
         sessionId={sessionId}
         exportToCSV={exportToCSV}
+        importFromCSV={importFromCSV} // Pass the import function to Toolbar
       />
       <div className="table-container">
         <table>
