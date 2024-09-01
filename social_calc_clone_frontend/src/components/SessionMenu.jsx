@@ -47,7 +47,7 @@ const SessionMenu = () => {
       return;
     }
 
-    const newSocket = io("http://localhost:5000");
+    const newSocket = io(`${process.env.REACT_APP_SERVER_URL}`);
     setSocket(newSocket);
     newSocket.emit("createUser", { username, email });
 
@@ -70,7 +70,7 @@ const SessionMenu = () => {
       if (username && email) {
         try {
           const response = await axios.post(
-            "http://localhost:5000/api/session/getSessions",
+            `${process.env.REACT_APP_SERVER_URL}/api/session/getSessions`,
             { username, email }
           );
           setUserSessions(response.data.sessions.reverse());
@@ -92,7 +92,7 @@ const SessionMenu = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/session/create",
+        `${process.env.REACT_APP_SERVER_URL}/api/session/create`,
         { username, email }
       );
       const { sessionId } = response.data;

@@ -70,7 +70,7 @@ const Spreadsheet = () => {
 
       // Send updates to the server for each cell individually
       try {
-        await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+        await fetch(`${process.env.REACT_APP_SERVER_URL}/api/session/update/${sessionId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -115,7 +115,7 @@ const Spreadsheet = () => {
     }
 
     // Initialize the socket connection
-    const newSocket = io("http://localhost:5000");
+    const newSocket = io(`${process.env.REACT_APP_SERVER_URL}`);
     setSocket(newSocket);
     // Handle errors
     newSocket.on("error", (message) => {
@@ -224,7 +224,7 @@ const Spreadsheet = () => {
           ...cells,
           [cellId]: newValue,
         };
-        await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+        await fetch(`${process.env.REACT_APP_SERVER_URL}/api/session/update/${sessionId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -268,7 +268,7 @@ const Spreadsheet = () => {
             ...cells,
             [cellId]: newValue,
           };
-          await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+          await fetch(`${process.env.REACT_APP_SERVER_URL}/api/session/update/${sessionId}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
