@@ -74,7 +74,7 @@ const Spreadsheet = () => {
 
       setCells(newCells);
       setColumns((state) => Math.max(state, columns));
-      setRows((state) => Math.max(state, rows.length));
+      setRows((state) => Math.max(state, rowsArray.length));
 
       // Send updates to the server for each cell individually
       try {
