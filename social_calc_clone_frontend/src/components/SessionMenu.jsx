@@ -18,6 +18,7 @@ import CardComponent from "./CardComponent";
 import axios from "axios";
 import styles from "./SessionMenu.module.css";
 import io from "socket.io-client";
+import { toast } from "react-toastify";
 
 const SessionMenu = () => {
   const [socket, setSocket] = useState(null);
@@ -41,12 +42,12 @@ const SessionMenu = () => {
     // Handle the response
     newSocket.on("userCreated", (data) => {
       dispatch(setUser(data));
-      alert(`User created: ${data.username}`);
+      toast(`User created: ${data.username}`);
     });
 
     // Handle errors
     newSocket.on("error", (message) => {
-      alert(message);
+      toast.error(message);
     });
 
     return () => {
@@ -75,7 +76,7 @@ const SessionMenu = () => {
 
   const handleCreateSession = async () => {
     if (!username || !email) {
-      alert("Please enter both username and email.");
+      toast.error("Please enter both username and email.");
       return;
     }
 
@@ -89,13 +90,13 @@ const SessionMenu = () => {
       navigate(`/session/${userId}/${sessionId}`); // Navigate to the new session
     } catch (error) {
       console.error("Error creating session:", error);
-      alert("Failed to create a new session. Please try again.");
+      toast.error("Failed to create a new session. Please try again.");
     }
   };
 
   const handleJoinSession = async () => {
     if (!sessionInput || !username || !email) {
-      alert("Please enter session ID, username, and email.");
+      toast.error("Please enter session ID, username, and email.");
       return;
     }
 
@@ -126,7 +127,6 @@ const SessionMenu = () => {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              height: "25vh",
               width: "30vw",
             }}
           >
@@ -186,7 +186,7 @@ const SessionMenu = () => {
         </CardComponent>
 
         {/* Display owned sessions */}
-        <Box sx={{ position: "absolute", backgroundColor:'white', bottom:'0', left:'0', right:'0' }}>
+        <Box sx={{ position: "absolute", backgroundColor:'rgba(255,255,255,0.4)', bottom:'0', left:'0', right:'0' }}>
           <Typography variant="h4" gutterBottom sx={{ textAlign: "center",marginTop:'2vh' }}>
             Your Sessions
           </Typography>

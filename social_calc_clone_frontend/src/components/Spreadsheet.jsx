@@ -5,7 +5,7 @@ import io from "socket.io-client";
 import "./Spreadsheet.css";
 import Toolbar from "./Toolbar";
 import { useParams } from "react-router-dom";
-
+import { toast } from "react-toastify";
 const Spreadsheet = () => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
@@ -27,7 +27,7 @@ const Spreadsheet = () => {
     setSocket(newSocket);
     // Handle errors
     newSocket.on("error", (message) => {
-      alert(message);
+      toast.error(message);
     });
 
     // Join the session
