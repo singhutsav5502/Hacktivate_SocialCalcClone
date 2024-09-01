@@ -11,12 +11,14 @@ require('dotenv').config();
 const app = express();
 
 // Load SSL certificates
-const privateKey = fs.readFileSync('cert/private.key', 'utf8');
-const certificate = fs.readFileSync('cert/certificate.crt', 'utf8');
+const privateKey = fs.readFileSync('certs/private.key', 'utf8');
+const certificate = fs.readFileSync('certs/certificate.crt', 'utf8');
+const ca = fs.readFileSync('certs/ca_bundle.crt', 'utf8');
 
 const credentials = {
   key: privateKey,
   cert: certificate,
+  ca: ca
 };
 
 // Create HTTPS server
