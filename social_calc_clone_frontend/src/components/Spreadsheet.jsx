@@ -168,7 +168,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
 
   return (
     <div>
-      <Toolbar addRow={addRow} addColumn={addColumn} />
+      <Toolbar addRow={addRow} addColumn={addColumn} sessionId={sessionId}/>
       <table>
         <tbody>
           {Array.from({ length: 10 }).map((_, rowIndex) => (
