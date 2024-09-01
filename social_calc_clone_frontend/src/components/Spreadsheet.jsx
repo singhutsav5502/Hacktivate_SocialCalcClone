@@ -55,28 +55,33 @@ const Spreadsheet = () => {
   const importFromCSV = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
+  
     const reader = new FileReader();
     reader.onload = async (e) => {
       let maxCols = 52;
       const text = e.target.result;
       const rowsArray = text.split("\n");
       const newCells = {};
+  
       rowsArray.forEach((row, rowIndex) => {
         const columns = row.split(",");
         maxCols = Math.max(maxCols, columns.length);
-
+  
         columns.forEach((col, colIndex) => {
           const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
           newCells[cellId] = col.replace(/(^"|"$)/g, "").replace(/""/g, '"'); // Unescape double quotes
         });
       });
-
-      setCells(newCells);
-      setColumns((state) => Math.max(state, columns));
+  
+      // Clear existing cells and set new cells
+      setCells((state)=>{}); // Clear all existing cells
+      setCells((state)=>newCells);
+  
+      // Update columns and rows state
+      setColumns((state) => Math.max(state, maxCols));
       setRows((state) => Math.max(state, rowsArray.length));
-
-      // Send updates to the server for each cell individually
+  
+      // Send updates to the server
       try {
         await fetch(
           `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
@@ -99,7 +104,6 @@ const Spreadsheet = () => {
     };
     reader.readAsText(file);
   };
-
   // Formula Evaluation
   const evaluateFormula = (formula, cells) => {
     try {
