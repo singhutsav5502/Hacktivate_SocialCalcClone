@@ -3,6 +3,7 @@
 # dependencies
 social_calc_clone_frontend/node_modules
 social_calc_clone_backend/node_modules
+social_calc_clone_backend/cert
 /.pnp
 .pnp.js
 
