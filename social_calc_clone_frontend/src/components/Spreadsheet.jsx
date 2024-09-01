@@ -32,7 +32,7 @@ const Spreadsheet = () => {
       return eval(expression); // Use eval to compute the result
     } catch (error) {
       console.error("Error evaluating formula:", error);
-      return formula; // Return original string in case of error
+      return 0; // Return Empty
     }
   };
 
@@ -179,35 +179,36 @@ const Spreadsheet = () => {
     // If the value starts with '=', evaluate it as a formula
     if (newValue.startsWith("=")) {
       newValue = evaluateFormula(newValue, cells);
-    }
-    // Update local state with the evaluated value
-    setCells((prevCells) => ({
-      ...prevCells,
-      [cellId]: newValue,
-    }));
-    // Only send the update to the server if it's a local change
-    if (!isRemoteUpdate) {
-      try {
-        const updatedCells = {
-          ...cells,
-          [cellId]: newValue,
-        };
-        await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionData: Object.entries(updatedCells),
-            senderId: userId,
-          }),
-        });
-      } catch (error) {
-        console.error("Error updating session data:", error);
+
+      // Update local state with the evaluated value
+      setCells((prevCells) => ({
+        ...prevCells,
+        [cellId]: newValue,
+      }));
+      // Only send the update to the server if it's a local change
+      if (!isRemoteUpdate) {
+        try {
+          const updatedCells = {
+            ...cells,
+            [cellId]: newValue,
+          };
+          await fetch(`http://localhost:5000/api/session/update/${sessionId}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sessionData: Object.entries(updatedCells),
+              senderId: userId,
+            }),
+          });
+        } catch (error) {
+          console.error("Error updating session data:", error);
+        }
+      } else {
+        // Reset the flag after handling the remote update
+        setIsRemoteUpdate(false);
       }
-    } else {
-      // Reset the flag after handling the remote update
-      setIsRemoteUpdate(false);
     }
     socket.emit("unfocusCell", { sessionId, cellId, username });
   };
