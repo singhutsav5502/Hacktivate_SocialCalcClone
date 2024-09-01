@@ -163,9 +163,6 @@ router.post('/getSessions', async (req, res) => {
   }
 });
 
-module.exports = router;
-
-
 // Socket event listeners for cell focus and unfocus
 global.io.on('connection', (socket) => {
   socket.on('focusCell', ({ sessionId, cellId, username }) => {
