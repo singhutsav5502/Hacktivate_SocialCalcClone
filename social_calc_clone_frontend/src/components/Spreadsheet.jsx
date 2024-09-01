@@ -35,7 +35,7 @@ const Spreadsheet = ({ sessionId, userId }) => {
     });
 
     // Join the session
-    newSocket.emit("joinSession", { sessionId, userId });
+    newSocket.emit("joinSession", { sessionId, userId});
 
     newSocket.on("sessionData", (data) => {
       console.log("Received sessionData:", data);

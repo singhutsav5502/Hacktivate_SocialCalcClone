@@ -37,7 +37,11 @@ router.post('/create', async (req, res) => {
     const sessionId = `sess-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
     const session = new Session({ sessionId, sessionData: new Map(), users: [userId] });
     await session.save();
-
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { sessions: session.sessionId } },
+      { new: true }
+    );
     res.status(201).json({ sessionId, userId });
   } catch (error) {
     console.error('Error creating session:', error);
@@ -67,11 +71,12 @@ router.post('/join/:sessionId', async (req, res) => {
     userId = user._id;
 
     // Add user to the session if not already present
-    if (!session.users.some(u => u.toString() === userId.toString())) {
-      session.users.push(userId);
+    if (!session.users.includes(userId)) {
+      // Add the user to the session
+      session.users.push(user._id);
       await session.save();
+      res.status(200).json({ message: 'User added to session', session });
     }
-
     // Send the entire session data to the client
     res.status(200).json({
       sessionId: session.sessionId,

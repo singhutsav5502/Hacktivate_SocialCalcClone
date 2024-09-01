@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  sessions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Session' }], // Sessions the user is part of
+  sessions: [{ type: String }], // Sessions the user owns, stored as strings
 });
 
 const User = mongoose.model('User', userSchema);
