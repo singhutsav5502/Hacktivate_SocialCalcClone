@@ -2,14 +2,20 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { setSessionId } from "../store/sessionSlice";
-import { setUser, setUsername, setEmail } from "../store/userSlice";
+import { setUser } from "../store/userSlice";
 import {
   Typography,
   Button,
   TextField,
   Box,
   IconButton,
-  Collapse,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -24,33 +30,32 @@ const SessionMenu = () => {
   const [socket, setSocket] = useState(null);
   const [sessionInput, setSessionInput] = useState("");
   const [userSessions, setUserSessions] = useState([]);
+  const [openModal, setOpenModal] = useState(false); // State to control the modal
   const { username, email, userId } = useSelector((state) => state.user);
-  const [open, setOpen] = useState(false); // State to control the collapse
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleToggle = () => {
-    setOpen(!open);
+  const handleToggleModal = () => {
+    setOpenModal(!openModal);
   };
+
   useEffect(() => {
     if (!username || !email) {
-      toast.error("Missing user or session data please try again")
-      navigate('/login')
+      toast.error("Missing user or session data. Please try again.");
+      navigate("/login");
       return;
     }
-    // Initialize the socket connection
+
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
     newSocket.emit("createUser", { username, email });
 
-    // Handle the response
     newSocket.on("userCreated", (data) => {
       dispatch(setUser(data));
       toast(`User created: ${data.username}`);
     });
 
-    // Handle errors
     newSocket.on("error", (message) => {
       toast.error(message);
     });
@@ -69,7 +74,7 @@ const SessionMenu = () => {
             { username, email }
           );
           setUserSessions(response.data.sessions.reverse());
-          console.log(response.data.sessions)
+          console.log(response.data.sessions);
         } catch (error) {
           console.error("Error fetching user sessions:", error);
         }
@@ -92,7 +97,7 @@ const SessionMenu = () => {
       );
       const { sessionId } = response.data;
       dispatch(setSessionId(sessionId));
-      navigate(`/session/${userId}/${sessionId}`); // Navigate to the new session
+      navigate(`/session/${userId}/${sessionId}`);
     } catch (error) {
       console.error("Error creating session:", error);
       toast.error("Failed to create a new session. Please try again.");
@@ -106,10 +111,10 @@ const SessionMenu = () => {
     }
 
     dispatch(setSessionId(sessionInput));
-    navigate(`/session/${userId}/${sessionInput}`); // Navigate to the joined session
+    navigate(`/session/${userId}/${sessionInput}`);
   };
+
   const handleJoin = (sessionId) => {
-    // Navigate to the spreadsheet with the sessionId
     navigate(`/session/${userId}/${sessionId}`);
   };
 
@@ -168,77 +173,69 @@ const SessionMenu = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               justifyContent: "space-between",
-              gap: "1rem",
+              width: "100%",
             }}
           >
-            <Button
-              variant="outlined"
-              onClick={handleCreateSession}
-              sx={{ flex: "1" }}
-            >
-              Create New Session
-            </Button>
+            <Box sx={{ flex: "1", display: "flex", gap: "1rem" }}>
+              <Button
+                variant="outlined"
+                onClick={handleCreateSession}
+                sx={{ flex: "1" }}
+              >
+                Create New Session
+              </Button>
+
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleJoinSession}
+                sx={{ flex: "1" }}
+              >
+                Join Session
+              </Button>
+            </Box>
             <Button
               variant="contained"
-              color="secondary"
-              onClick={handleJoinSession}
-              sx={{ flex: "1" }}
+              color="primary"
+              onClick={handleToggleModal}
+              sx={{ marginTop: 2 }}
             >
-              Join Session
+              Rejoin Session
             </Button>
           </Box>
         </CardComponent>
 
-        {/* Display owned sessions */}
-        <Box sx={{ position: "absolute", backgroundColor:'rgba(255,255,255,0.4)', bottom:'0', left:'0', right:'0' }}>
-          <Typography variant="h4" gutterBottom sx={{ textAlign: "center",marginTop:'2vh' }}>
-            Your Sessions
-          </Typography>
-          <IconButton
-            onClick={handleToggle}
-            sx={{ position: "absolute", top: 0, right: 0 }}
-          >
-            {!open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
-          <Collapse in={open}>
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "flex-start",
-                justifyContent: "space-evenly",
-              }}
-            >
+        {/* Modal for owned sessions */}
+        <Dialog open={openModal} onClose={handleToggleModal} fullWidth>
+          <DialogTitle>Your Sessions</DialogTitle>
+          <DialogContent>
+            <List>
               {userSessions.length > 0 ? (
-                <>
-                  {userSessions.map((session) => (
-                    <CardComponent key={session.sessionId}>
-                      <Typography>
-                        <strong>Session ID:</strong> {session.sessionId}
-                        <br />
-                        <strong>Created At:</strong>{" "}
-                        {new Date(session.createdAt).toLocaleString()}
-                        <br />
-                        <strong>Users:</strong> {session.users.join(", ")}
-                      </Typography>
-                      <Button
-                    variant="contained"
-                    color="primary"
+                userSessions.map((session) => (
+                  <ListItem
+                    button
+                    key={session.sessionId}
                     onClick={() => handleJoin(session.sessionId)}
-                    sx={{ marginTop: 2 }}
                   >
-                    Join
-                  </Button>
-                    </CardComponent>
-                  ))}
-                </>
+                    <ListItemText
+                      primary={`Session ID: ${session.sessionId}`}
+                      secondary={`Created At: ${new Date(
+                        session.createdAt
+                      ).toLocaleString()} | Users: ${session.users.join(", ")}`}
+                    />
+                  </ListItem>
+                ))
               ) : (
                 <Typography>No sessions available</Typography>
               )}
-            </Box>
-          </Collapse>
-        </Box>
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleToggleModal}>Close</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </div>
   );
