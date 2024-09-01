@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import io from "socket.io-client";
 import "./Spreadsheet.css";
@@ -19,6 +19,15 @@ const Spreadsheet = () => {
   const email = useSelector((state) => state.user.email);
   const { sessionId, userId } = useParams();
   const navigate = useNavigate();
+
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
   // CSV
   const convertToCSV = (data, rows, columns) => {
     const body = Array.from({ length: rows }, (_, rowIndex) => {
@@ -210,43 +219,49 @@ const Spreadsheet = () => {
     };
   }, [sessionId, username, email, userId]);
 
+
+  const updateServer = async (updatedCells) => {
+    try {
+      await fetch(
+        `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionData: Object.entries(updatedCells),
+            senderId: userId,
+            rows: rows,
+            columns: columns,
+          }),
+        }
+      );
+    } catch (error) {
+      console.error("Error updating session data:", error);
+    }
+  };
+
+  const debouncedUpdateServer = useCallback(debounce(updateServer, 300), [rows, columns, userId, sessionId]);
+
+
   const handleCellChange = async (event) => {
     const cellId = event.target.id;
     const newValue = event.target.value; // New value or formula
-    setCells((prevCells) => ({
-      ...prevCells,
-      [cellId]: newValue,
-    }));
-
-    // Only send the update to the server if it's a local change
-    if (!isRemoteUpdate) {
-      try {
-        const updatedCells = {
-          ...cells,
-          [cellId]: newValue,
-        };
-        await fetch(
-          `${process.env.REACT_APP_SERVER_URL}api/session/update/${sessionId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              sessionData: Object.entries(updatedCells),
-              senderId: userId,
-              rows: rows,
-              columns: columns,
-            }),
-          }
-        );
-      } catch (error) {
-        console.error("Error updating session data:", error);
+    setCells((prevCells) => {
+      const updatedCells = {
+        ...prevCells,
+        [cellId]: newValue,
+      };
+  
+      if (!isRemoteUpdate) {
+        debouncedUpdateServer(updatedCells);
+      } else {
+        setIsRemoteUpdate(false);
       }
-    } else {
-      // Reset the flag after handling the remote update
-      setIsRemoteUpdate(false);
-    }
+  
+      return updatedCells;
+    });
   };
 
   const handleFocus = (event) => {
