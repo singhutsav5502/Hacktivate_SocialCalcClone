@@ -92,7 +92,7 @@ const SessionMenu = () => {
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_SERVER_URL}/api/session/create`,
+        `${process.env.REACT_APP_SERVER_URL}api/session/create`,
         { username, email }
       );
       const { sessionId } = response.data;
