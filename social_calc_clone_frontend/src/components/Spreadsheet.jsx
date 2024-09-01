@@ -156,6 +156,7 @@ const Spreadsheet = () => {
     newSocket.on(
       "sessionDataUpdated",
       ({ sessionData, rows, columns, senderId }) => {
+        console.log(rows,columns, sessionData)
         if (senderId !== userId) {
           // Ignore updates from the current user
           if (Array.isArray(sessionData)) {
@@ -232,6 +233,8 @@ const Spreadsheet = () => {
           body: JSON.stringify({
             sessionData: Object.entries(updatedCells),
             senderId: userId,
+            rows:rows,
+            columns:columns
           }),
         });
       } catch (error) {
@@ -276,6 +279,8 @@ const Spreadsheet = () => {
             body: JSON.stringify({
               sessionData: Object.entries(updatedCells),
               senderId: userId,
+              rows:rows,
+              columns:columns,
             }),
           });
         } catch (error) {
