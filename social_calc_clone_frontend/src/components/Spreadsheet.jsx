@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "../store/userSlice";
+import { useSelector } from "react-redux";
 import io from "socket.io-client";
 import "./Spreadsheet.css";
 import Toolbar from "./Toolbar";
@@ -14,11 +13,39 @@ const Spreadsheet = () => {
   const [rows, setRows] = useState(52);
   const [columns, setColumns] = useState(52);
   const [isRemoteUpdate, setIsRemoteUpdate] = useState(false); // Flag for remote updates
-  const dispatch = useDispatch();
   const username = useSelector((state) => state.user.username);
   const email = useSelector((state) => state.user.email);
   const { sessionId, userId } = useParams();
 
+  // CSV
+  const convertToCSV = (data, rows, columns) => {
+    const header =
+      Array.from({ length: columns }, (_, colIndex) =>
+        getColumnLabel(colIndex)
+      ).join(",") + "\n";
+    const body = Array.from({ length: rows }, (_, rowIndex) => {
+      return Array.from({ length: columns }, (_, colIndex) => {
+        const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
+        return `"${(data[cellId] || "").replace(/"/g, '""')}"`; // Escape double quotes
+      }).join(",");
+    }).join("\n");
+
+    return header + body;
+  };
+
+  const exportToCSV = () => {
+    const csv = convertToCSV(cells, rows, columns);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "spreadsheet.csv"); // File name
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Formula Evaluation
   const evaluateFormula = (formula, cells) => {
     try {
       // Replace cell references with their values
@@ -230,17 +257,14 @@ const Spreadsheet = () => {
     }
     return label;
   };
-  const columnLabelToIndex = (label) => {
-    let index = 0;
-    for (let i = 0; i < label.length; i++) {
-      index *= 26;
-      index += label.charCodeAt(i) - "A".charCodeAt(0) + 1;
-    }
-    return index - 1; // Convert to 0-based index
-  };
   return (
     <div>
-      <Toolbar addRow={addRow} addColumn={addColumn} sessionId={sessionId} />
+      <Toolbar
+        addRow={addRow}
+        addColumn={addColumn}
+        sessionId={sessionId}
+        exportToCSV={exportToCSV}
+      />
       <div className="table-container">
         <table>
           <thead>

@@ -11,9 +11,10 @@ import TableRowsIcon from "@mui/icons-material/TableRows";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import SaveIcon from "@mui/icons-material/Save";
 import "./Toolbar.css";
 
-const Toolbar = ({ addRow, addColumn, sessionId }) => {
+const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV }) => {
   const handleCopySessionId = () => {
     navigator.clipboard.writeText(sessionId).then(() => {
       console.log("Session ID copied to clipboard");
@@ -41,11 +42,22 @@ const Toolbar = ({ addRow, addColumn, sessionId }) => {
           alignItems: "center",
           borderRadius: "4px",
           marginLeft: "8px",
+          gap:'1vw'
         }}
       >
+        <Tooltip title="Export">
+          <IconButton
+            onClick={exportToCSV}
+            color="primary"
+            aria-label="export to CSV"
+          >
+            <SaveIcon />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Add Row">
           <IconButton
             onClick={addRow}
+            color="primary"
             size="small"
             sx={{ padding: "4px 8px", borderRadius: "8px" }}
           >
@@ -59,6 +71,7 @@ const Toolbar = ({ addRow, addColumn, sessionId }) => {
         <Tooltip title="Add Column">
           <IconButton
             onClick={addColumn}
+            color="primary"
             size="small"
             sx={{ padding: "4px 8px", borderRadius: "8px" }}
           >
