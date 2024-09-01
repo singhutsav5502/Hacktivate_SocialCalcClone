@@ -1,14 +1,26 @@
 const express = require('express');
-const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const User = require('./models/user');
-const Session = require('./models/session')
+const Session = require('./models/session');
 require('dotenv').config();
 
 const app = express();
-const server = http.createServer(app);
+
+// Load SSL certificates
+const privateKey = fs.readFileSync('cert/private.key', 'utf8');
+const certificate = fs.readFileSync('cert/certificate.crt', 'utf8');
+
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+};
+
+// Create HTTPS server
+const server = https.createServer(credentials, app);
 
 // Configure CORS for Express
 app.use(cors({
@@ -88,6 +100,7 @@ io.on('connection', (socket) => {
       console.error('Error processing join session:', error);
     }
   });
+
   // Handle row addition
   socket.on('addRow', async ({ sessionId, senderId }) => {
     try {
@@ -147,7 +160,6 @@ io.on('connection', (socket) => {
       console.error('Error adding column:', error);
     }
   });
-
 
   // Handle cell focus
   socket.on('focusCell', ({ sessionId, cellId, username }) => {
