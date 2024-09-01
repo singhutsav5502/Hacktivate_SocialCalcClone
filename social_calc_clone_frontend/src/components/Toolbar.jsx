@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   ButtonGroup,
   IconButton,
@@ -15,13 +15,26 @@ import SaveIcon from "@mui/icons-material/Save";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import "./Toolbar.css";
 
-const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV, importFromCSV }) => {
+const Toolbar = ({
+  addRow,
+  addColumn,
+  sessionId,
+  exportToCSV,
+  importFromCSV,
+}) => {
   const handleCopySessionId = () => {
     navigator.clipboard.writeText(sessionId).then(() => {
       console.log("Session ID copied to clipboard");
     });
   };
+  const fileInputRef = useRef(null);
+  const refHandler = (e)=>{
 
+    importFromCSV(e)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null;
+    }
+  }
   return (
     <MuiToolbar
       sx={{
@@ -43,7 +56,7 @@ const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV, importFromCSV }) =
           alignItems: "center",
           borderRadius: "4px",
           marginLeft: "8px",
-          gap: '1vw'
+          gap: "1vw",
         }}
       >
         <Tooltip title="Export">
@@ -56,17 +69,14 @@ const Toolbar = ({ addRow, addColumn, sessionId, exportToCSV, importFromCSV }) =
           </IconButton>
         </Tooltip>
         <Tooltip title="Import CSV">
-          <IconButton
-            color="primary"
-            aria-label="import CSV"
-            component="label"
-          >
+          <IconButton color="primary" aria-label="import CSV" component="label">
             <UploadFileIcon />
             <input
               type="file"
               accept=".csv"
-              onChange={importFromCSV}
+              onChange={refHandler}
               hidden
+              ref={fileInputRef}
             />
           </IconButton>
         </Tooltip>
