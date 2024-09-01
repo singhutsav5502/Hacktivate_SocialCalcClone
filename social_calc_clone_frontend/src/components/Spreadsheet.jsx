@@ -5,6 +5,7 @@ import "./Spreadsheet.css";
 import Toolbar from "./Toolbar";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 const Spreadsheet = () => {
   const [socket, setSocket] = useState(null);
   const [focusedCell, setFocusedCell] = useState(null);
@@ -16,7 +17,7 @@ const Spreadsheet = () => {
   const username = useSelector((state) => state.user.username);
   const email = useSelector((state) => state.user.email);
   const { sessionId, userId } = useParams();
-
+  const navigate = useNavigate();
   // CSV
   const convertToCSV = (data, rows, columns) => {
     const header =
@@ -64,7 +65,11 @@ const Spreadsheet = () => {
   };
 
   useEffect(() => {
-    if (!sessionId || !username || !email) return; // Exit early if sessionId, username, or email are not available
+    if (!sessionId || !username || !email) {
+      toast.error("Missing user or session data please try again")
+      navigate('/login')
+      return;
+    }
 
     // Initialize the socket connection
     const newSocket = io("http://localhost:5000");

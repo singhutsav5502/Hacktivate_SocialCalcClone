@@ -34,6 +34,11 @@ const SessionMenu = () => {
     setOpen(!open);
   };
   useEffect(() => {
+    if (!username || !email) {
+      toast.error("Missing user or session data please try again")
+      navigate('/login')
+      return;
+    }
     // Initialize the socket connection
     const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
