@@ -74,7 +74,7 @@ const SessionMenu = () => {
             { username, email }
           );
           setUserSessions(response.data.sessions.reverse());
-          console.log(response.data.sessions);
+          // console.log(response.data.sessions);
         } catch (error) {
           console.error("Error fetching user sessions:", error);
         }

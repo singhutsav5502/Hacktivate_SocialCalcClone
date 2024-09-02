@@ -143,7 +143,7 @@ const Spreadsheet = () => {
     newSocket.emit("joinSession", { sessionId, userId, username, email });
 
     newSocket.on("sessionData", (data) => {
-      console.log("Received sessionData:", data);
+      // console.log("Received sessionData:", data);
       if (Array.isArray(data.sessionData)) {
         // If sessionData is an array, format it into an object
         const formattedSessionData = data.sessionData.reduce(
@@ -173,7 +173,7 @@ const Spreadsheet = () => {
     newSocket.on(
       "sessionDataUpdated",
       ({ sessionData, rows, columns, senderId, type }) => {
-        console.log(rows, columns, sessionData);
+        // console.log(rows, columns, sessionData);
         if (senderId !== userId) {
           // Ignore updates from the current user
           if (Array.isArray(sessionData)) {
@@ -189,7 +189,7 @@ const Spreadsheet = () => {
             // Set the flag to indicate a remote update
             setIsRemoteUpdate(true);
             // CLIENT SIDE MERGE LOGIC
-            if(!type){  // type 'Import' only sent when import happened on some client
+            if(!type || type!=='Import'){  // type 'Import' only sent when import happened on some client
               // otherwise make sure currently highlighted cell values don't get updated
               updatedSessionData[userFocus] = cells[userFocus]
             }

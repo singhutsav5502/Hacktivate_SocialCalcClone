@@ -24,7 +24,7 @@ const Toolbar = ({
 }) => {
   const handleCopySessionId = () => {
     navigator.clipboard.writeText(sessionId).then(() => {
-      console.log("Session ID copied to clipboard");
+      // console.log("Session ID copied to clipboard");
     });
   };
   const fileInputRef = useRef(null);
