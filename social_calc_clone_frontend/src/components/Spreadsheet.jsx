@@ -189,7 +189,7 @@ const Spreadsheet = () => {
             // Set the flag to indicate a remote update
             setIsRemoteUpdate(true);
             // CLIENT SIDE MERGE LOGIC
-            if(!type || type!=='Import'){  // type 'Import' only sent when import happened on some client
+            if(userFocus!==null && (!type || type!=='Import')){  // type 'Import' only sent when import happened on some client
               // otherwise make sure currently highlighted cell values don't get updated
               updatedSessionData[userFocus] = cells[userFocus]
             }
