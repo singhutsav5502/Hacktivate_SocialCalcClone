@@ -11,6 +11,7 @@ import { evaluate } from "mathjs";
 const Spreadsheet = () => {
   const [socket, setSocket] = useState(null);
   const [focusedCells, setFocusedCells] = useState([]);
+  const [userFocus, setUserFocus] = useState(null);
   const [cells, setCells] = useState({}); // Local state for cells
   const [rows, setRows] = useState(52);
   const [columns, setColumns] = useState(52);
@@ -95,6 +96,7 @@ const Spreadsheet = () => {
               senderId: userId,
               rows: Math.max(rows, rowsArray.length),
               columns: Math.max(columns, maxCols),
+              type:'Import',
             }),
           }
         );
@@ -170,7 +172,7 @@ const Spreadsheet = () => {
     // Listen for session data updates
     newSocket.on(
       "sessionDataUpdated",
-      ({ sessionData, rows, columns, senderId }) => {
+      ({ sessionData, rows, columns, senderId, type }) => {
         console.log(rows, columns, sessionData);
         if (senderId !== userId) {
           // Ignore updates from the current user
@@ -186,6 +188,11 @@ const Spreadsheet = () => {
 
             // Set the flag to indicate a remote update
             setIsRemoteUpdate(true);
+            // CLIENT SIDE MERGE LOGIC
+            if(!type){  // type 'Import' only sent when import happened on some client
+              // otherwise make sure currently highlighted cell values don't get updated
+              updatedSessionData[userFocus] = cells[userFocus]
+            }
             // Update the cells state with the new data
             setCells((prevCells) => ({
               ...prevCells,
@@ -270,13 +277,14 @@ const Spreadsheet = () => {
 
   const handleFocus = (event) => {
     const cellId = event.target.id;
+    setUserFocus((state)=>cellId);
     socket.emit("focusCell", { sessionId, cellId, username });
   };
 
   const handleBlur = async (event) => {
     const cellId = event.target.id;
     let newValue = event.target.value; // Get the current value
-
+    setUserFocus((state)=>null)
     // If the value starts with '=', evaluate it as a formula
     if (newValue.startsWith("=")) {
       newValue = evaluateFormula(newValue, cells);

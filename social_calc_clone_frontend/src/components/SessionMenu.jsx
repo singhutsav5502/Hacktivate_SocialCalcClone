@@ -218,6 +218,7 @@ const SessionMenu = () => {
                     button
                     key={session.sessionId}
                     onClick={() => handleJoin(session.sessionId)}
+                    sx={{cursor:'pointer'}}
                   >
                     <ListItemText
                       primary={`Session ID: ${session.sessionId}`}
