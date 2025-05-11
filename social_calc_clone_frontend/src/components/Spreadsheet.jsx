@@ -13,6 +13,8 @@ const Spreadsheet = () => {
   const [focusedCells, setFocusedCells] = useState([]);
   const [userFocus, setUserFocus] = useState(null);
   const [cells, setCells] = useState({}); // Local state for cells
+  const [formulaExp, setFormulaExp] = useState({});
+  const [formulaReferences, setFormulaReferences] = useState({});
   const [rows, setRows] = useState(52);
   const [columns, setColumns] = useState(52);
   const [isRemoteUpdate, setIsRemoteUpdate] = useState(false); // Flag for remote updates
@@ -56,32 +58,32 @@ const Spreadsheet = () => {
   const importFromCSV = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-  
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       let maxCols = 52;
       const text = e.target.result;
       const rowsArray = text.split("\n");
       const newCells = {};
-  
+
       rowsArray.forEach((row, rowIndex) => {
         const columns = row.split(",");
         maxCols = Math.max(maxCols, columns.length);
-  
+
         columns.forEach((col, colIndex) => {
           const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
           newCells[cellId] = col.replace(/(^"|"$)/g, "").replace(/""/g, '"'); // Unescape double quotes
         });
       });
-  
+
       // Clear existing cells and set new cells
-      setCells((state)=>{}); // Clear all existing cells
-      setCells((state)=>newCells);
-  
+      setCells((state) => {}); // Clear all existing cells
+      setCells((state) => newCells);
+
       // Update columns and rows state
       setColumns((state) => Math.max(state, maxCols));
       setRows((state) => Math.max(state, rowsArray.length));
-  
+
       // Send updates to the server
       try {
         await fetch(
@@ -96,7 +98,7 @@ const Spreadsheet = () => {
               senderId: userId,
               rows: Math.max(rows, rowsArray.length),
               columns: Math.max(columns, maxCols),
-              type:'Import',
+              type: "Import",
             }),
           }
         );
@@ -106,16 +108,34 @@ const Spreadsheet = () => {
     };
     reader.readAsText(file);
   };
+  // store referenced values
+  const storeFormula = (formula, references, cellId) => {
+    setFormulaExp((prev) => {
+      return { ...prev, [cellId]: formula };
+    });
+    references.forEach((ref) => {
+      setFormulaReferences((prev) => {
+        let curr = prev[ref];
+        if (curr !== undefined) {
+          curr.push(cellId);
+          return { ...prev, [ref]: curr };
+        }
+        return { ...prev, [ref]: [cellId] };
+      });
+    });
+  };
   // Formula Evaluation
-  const evaluateFormula = (formula, cells) => {
+  const evaluateFormula = (formula, cells, cellId) => {
     try {
       // Replace cell references with their values
+      const references = [];
       const expression = formula
         .replace(/([A-Z]+\d+)/g, (match) => {
+          references.push(match);
           return cells[match] || 0; // Default to 0 if the cell value is not available
         })
         .replace("=", ""); // Remove '=' at the beginning of the formula
-
+      storeFormula(formula, references, cellId);
       // Evaluate the expression
       return evaluate(expression); // Use eval to compute the result
     } catch (error) {
@@ -123,7 +143,6 @@ const Spreadsheet = () => {
       return 0; // Return Empty
     }
   };
-
   useEffect(() => {
     if (!sessionId || !username || !email) {
       toast.error("Missing user or session data please try again");
@@ -189,9 +208,10 @@ const Spreadsheet = () => {
             // Set the flag to indicate a remote update
             setIsRemoteUpdate(true);
             // CLIENT SIDE MERGE LOGIC
-            if(userFocus!==null && (!type || type!=='Import')){  // type 'Import' only sent when import happened on some client
+            if (userFocus !== null && (!type || type !== "Import")) {
+              // type 'Import' only sent when import happened on some client
               // otherwise make sure currently highlighted cell values don't get updated
-              updatedSessionData[userFocus] = cells[userFocus]
+              updatedSessionData[userFocus] = cells[userFocus];
             }
             // Update the cells state with the new data
             setCells((prevCells) => ({
@@ -230,7 +250,6 @@ const Spreadsheet = () => {
     };
   }, [sessionId, username, email, userId]);
 
-
   const updateServer = async (updatedCells) => {
     try {
       await fetch(
@@ -253,41 +272,71 @@ const Spreadsheet = () => {
     }
   };
 
-  const debouncedUpdateServer = useCallback(debounce(updateServer, 300), [rows, columns, userId, sessionId]);
+  const debouncedUpdateServer = useCallback(debounce(updateServer, 300), [
+    rows,
+    columns,
+    userId,
+    sessionId,
+  ]);
 
-
-  const handleCellChange = async (event) => {
+  const handleCellChange = (event) => {
     const cellId = event.target.id;
-    const newValue = event.target.value; // New value or formula
+    const newValue = event.target.value;
+
     setCells((prevCells) => {
       const updatedCells = {
         ...prevCells,
         [cellId]: newValue,
       };
-  
+
+      const formulaUpdates = {};
+
+      try {
+        if (formulaReferences[cellId]) {
+          formulaReferences[cellId].forEach((targetCell) => {
+            const formula = formulaExp[targetCell];
+            if (formula) {
+              formulaUpdates[targetCell] = evaluateFormula(
+                formula,
+                updatedCells,
+                targetCell
+              );
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error updating formula val: ", err);
+      }
+
+      const finalUpdatedCells = {
+        ...updatedCells,
+        ...formulaUpdates,
+      };
+
+      // Handle server updates
       if (!isRemoteUpdate) {
-        debouncedUpdateServer(updatedCells);
+        debouncedUpdateServer(finalUpdatedCells);
       } else {
         setIsRemoteUpdate(false);
       }
-  
-      return updatedCells;
+
+      return finalUpdatedCells;
     });
   };
 
   const handleFocus = (event) => {
     const cellId = event.target.id;
-    setUserFocus((state)=>cellId);
+    setUserFocus((state) => cellId);
     socket.emit("focusCell", { sessionId, cellId, username });
   };
 
   const handleBlur = async (event) => {
     const cellId = event.target.id;
     let newValue = event.target.value; // Get the current value
-    setUserFocus((state)=>null)
+    setUserFocus((state) => null);
     // If the value starts with '=', evaluate it as a formula
     if (newValue.startsWith("=")) {
-      newValue = evaluateFormula(newValue, cells);
+      newValue = evaluateFormula(newValue, cells, cellId);
 
       // Update local state with the evaluated value
       setCells((prevCells) => ({
@@ -367,12 +416,14 @@ const Spreadsheet = () => {
             </tr>
           </thead>
           <tbody>
-          {Array.from({ length: rows }).map((_, rowIndex) => (
+            {Array.from({ length: rows }).map((_, rowIndex) => (
               <tr key={`row-${rowIndex}`}>
                 <th className="header">{rowIndex + 1}</th>
                 {Array.from({ length: columns }).map((_, colIndex) => {
                   const cellId = `${getColumnLabel(colIndex)}${rowIndex + 1}`;
-                  const focusedCell = focusedCells.find(cell => cell.cellId === cellId);
+                  const focusedCell = focusedCells.find(
+                    (cell) => cell.cellId === cellId
+                  );
                   return (
                     <td key={cellId}>
                       <input
@@ -385,7 +436,9 @@ const Spreadsheet = () => {
                         className={focusedCell ? "highlight" : ""}
                       />
                       {focusedCell && (
-                        <label className="focused-user">{focusedCell.username}</label>
+                        <label className="focused-user">
+                          {focusedCell.username}
+                        </label>
                       )}
                     </td>
                   );

@@ -7,22 +7,22 @@ const cors = require('cors');
 const User = require('./models/user');
 const Session = require('./models/session');
 require('dotenv').config();
-
+const http = require('http');
 const app = express();
 
 // Load SSL certificates
-const privateKey = fs.readFileSync('./certs/private.key', 'utf8');
-const certificate = fs.readFileSync('./certs/certificate.crt', 'utf8');
-const ca = fs.readFileSync('./certs/ca_bundle.crt', 'utf8');
+// const privateKey = fs.readFileSync('./certs/private.key', 'utf8');
+// const certificate = fs.readFileSync('./certs/certificate.crt', 'utf8');
+// const ca = fs.readFileSync('./certs/ca_bundle.crt', 'utf8');
 
-const credentials = {
-  key: privateKey,
-  cert: certificate,
-  ca: ca
-};
+// const credentials = {
+//   key: privateKey,
+//   cert: certificate,
+//   ca: ca
+// };
 
 // Create HTTPS server
-const server = https.createServer(credentials, app);
+// const server = https.createServer(credentials, app);
 
 // Configure CORS for Express
 app.use(cors({
@@ -30,6 +30,8 @@ app.use(cors({
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
+
+const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
