@@ -2,7 +2,7 @@
 
 ## Deployment Link for Frontend
 
-- **Deployment Link:** [Your Deployment Link Here](https://hacktivist-social-calc-clone.vercel.app/login)
+- **Deployment Link:** [Deployment Link](https://hacktivist-social-calc-clone.vercel.app/login)
 
 ## Frontend Setup
 
